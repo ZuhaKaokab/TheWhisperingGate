@@ -101,17 +101,42 @@ This checklist walks through creating the required scene objects, wiring referen
 
 ---
 
-### 6. InventoryManager
+### 6. InventoryManager + UI
 1. On `GameManager` object (or a new empty), add `InventoryManager` component.
 2. Populate `All Items` list with sample data:
    - Size = 2 (e.g., `journal`, `key`).
-   - Provide name, icon (optional), description.
-3. Add `InventoryTestHarness` (`Assets/Scripts/Testing/InventoryTestHarness.cs`) to any object:
+   - Provide name, icon, description (icons optional but recommended).
+3. Build inventory UI:
+   - Create Canvas (can reuse Dialogue canvas or make new `InventoryCanvas`).
+   - Panel hierarchy example:
+     ```
+     InventoryPanel (panelRoot)
+       ├─ ScrollView/Content (assign to slotsParent, add GridLayoutGroup)
+       ├─ DetailPanel
+       │    ├─ DetailIcon (Image)
+       │    ├─ DetailName (TMP Text)
+       │    └─ DetailDescription (TMP Text)
+      HotbarRoot (separate horizontal layout at bottom)
+        ├─ HotbarSlot (repeat 4 times) – assign as children of `hotbarParent`
+     ```
+   - Create slot prefab (`UI/InventorySlot.prefab`):
+     - Button → child with Image for icon + TMP Text for item name + optional highlight object.
+     - Add `InventorySlotUI` component, assign icon/name/highlight references.
+    - Create hotbar slot prefab (can reuse same prefab or simplified version) and assign to `hotbarSlotPrefab`.
+   - Add `InventoryUIPanel` component to `InventoryPanel`.
+     - Assign `panelRoot`, `slotsParent`, `slotPrefab`, detail UI references, `hotbarParent`, `hotbarSlotPrefab`.
+     - Set `toggleKey` (defaults to `Tab`), and optional prev/next hotbar keys (default `Q`/`E`).
+4. Add `InventoryTestHarness` (`Assets/Scripts/Testing/InventoryTestHarness.cs`) to any object:
    - `4` adds `addItemId`.
    - `5` removes `removeItemId`.
    - `6` queries inventory for `queryItemId`.
    - Harness auto-subscribes to add/remove events and logs confirmations.
-4. ✅ Success criteria: Items add/remove once via hotkeys; event logs fire; `HasItem` reflects state.
+5. Press Play:
+   - Use harness keys to add/remove items, confirm slots appear/disappear.
+   - Scroll mouse wheel or press `Q/E` to move hotbar highlight; click slots to preview details.
+   - Hover over grid items (when panel open) to see detail panel update instantly.
+   - Press `Tab` to toggle the full grid panel; hotbar stays visible outside the panel.
+6. ✅ Success criteria: Grid shows all items, hotbar mirrors first few items with highlight cycling via scroll/keys, detail info updates on hover/click, UI toggles cleanly.
 
 ---
 
