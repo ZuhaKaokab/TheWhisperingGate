@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e9b38f99e9285094586040237511d0ce, type: 3}
-  m_Name: Tree_
+  m_Name: Test_JungleAwakens
   m_EditorClassIdentifier: 
-  treeId: test_tree
-  treeTitle: 
-  startNode: {fileID: 11400000, guid: 5d5ce9c99f7b0f94db7b691781be051a, type: 2}
+  treeId: jungle
+  treeTitle: Jungle Awakens
+  startNode: {fileID: 11400000, guid: 332af640bf4e2f84c9c626b0411a8ff9, type: 2}
   defaultTypewriterSpeed: 0.05
   autoAdvanceIfSingleChoice: 0

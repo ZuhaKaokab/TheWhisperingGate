@@ -37,6 +37,8 @@ namespace WhisperingGate.UI
             {
                 DialogueManager.Instance.OnNodeDisplayed += DisplayNode;
                 DialogueManager.Instance.OnDialogueEnded += HidePanel;
+                DialogueManager.Instance.OnItemGiven += HandleItemGiven;
+                DialogueManager.Instance.OnImpactApplied += HandleImpactApplied;
             }
             else
             {
@@ -55,6 +57,28 @@ namespace WhisperingGate.UI
             {
                 DialogueManager.Instance.OnNodeDisplayed -= DisplayNode;
                 DialogueManager.Instance.OnDialogueEnded -= HidePanel;
+                DialogueManager.Instance.OnItemGiven -= HandleItemGiven;
+                DialogueManager.Instance.OnImpactApplied -= HandleImpactApplied;
+            }
+            
+            if (skipButton != null)
+                skipButton.onClick.RemoveListener(SkipTypewriter);
+        }
+        
+        private void HandleItemGiven(string itemId)
+        {
+            if (impactNotificationUI != null)
+            {
+                // Get item name from InventoryManager if available
+                string itemName = itemId;
+                if (Gameplay.InventoryManager.Instance != null)
+                {
+                    var itemData = Gameplay.InventoryManager.Instance.GetItemData(itemId);
+                    if (itemData != null && !string.IsNullOrEmpty(itemData.itemName))
+                        itemName = itemData.itemName;
+                }
+                
+                impactNotificationUI.ShowItemGained(itemName);
             }
         }
         
@@ -172,6 +196,9 @@ namespace WhisperingGate.UI
             }
         }
         
+        [Header("Impact Notifications")]
+        [SerializeField] private ImpactNotificationUI impactNotificationUI;
+        
         private void SelectChoice(int index)
         {
             if (DialogueManager.Instance == null) return;
@@ -184,6 +211,14 @@ namespace WhisperingGate.UI
             }
             
             DialogueManager.Instance.SelectChoice(index);
+        }
+        
+        private void HandleImpactApplied(string variableName, int change)
+        {
+            if (impactNotificationUI != null)
+            {
+                impactNotificationUI.ShowVariableChange(variableName, change);
+            }
         }
         
         private IEnumerator WaitThenAdvance(float delay)

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 378236dd876293d43b3c76f4a19720be, type: 3}
+  m_Name: Node_7_jungle_touch_tree
+  m_EditorClassIdentifier: 
+  nodeId: jungle_touch_tree
+  speaker: {fileID: 11400000, guid: 4a8c3185d13e75741aa7ad02124c743e, type: 2}
+  lineText: I placed my hand on the gnarled bark. The moment I touched it, images
+    flooded my mind, Alina screaming, a ritual circle, a gate that shouldn't exist.
+    The tree was showing me something. Showing me the way.
+  voiceClip: {fileID: 0}
+  voiceDelay: 0
+  choices: []
+  nextNodeIfAuto: {fileID: 11400000, guid: 080e3095438d7a64bbba84313931d3f7, type: 2}
+  startCommands:
+  - flag:touched_tree
+  - var:investigation_level+20
+  endCommands: []
+  isEndNode: 0
+  displayDuration: 0

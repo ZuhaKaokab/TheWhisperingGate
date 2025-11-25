@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 378236dd876293d43b3c76f4a19720be, type: 3}
+  m_Name: Node_8_jungle_scream
+  m_EditorClassIdentifier: 
+  nodeId: jungle_scream
+  speaker: {fileID: 11400000, guid: 4a8c3185d13e75741aa7ad02124c743e, type: 2}
+  lineText: Help me!" The voice was unmistakable. Alina. She was here, somewhere
+    in this nightmare. The scream came from deeper in the jungle, toward a path I
+    hadn't noticed before.
+  voiceClip: {fileID: 0}
+  voiceDelay: 0
+  choices:
+  - choiceText: Run toward the scream
+    nextNode: {fileID: 11400000, guid: 54e8dbccde125c14992da47f5e6f8ad8, type: 2}
+    impacts:
+    - variableName: courage
+      valueChange: 15
+      isConditional: 0
+      applyCondition: 
+    - variableName: trust_alina
+      valueChange: 10
+      isConditional: 0
+      applyCondition: 
+    hasCondition: 0
+    showCondition: 
+  - choiceText: Wait and observe first
+    nextNode: {fileID: 11400000, guid: 952ba742e1b5b1a4c824212d132a95d3, type: 2}
+    impacts:
+    - variableName: investigation_level
+      valueChange: 10
+      isConditional: 0
+      applyCondition: 
+    - variableName: courage
+      valueChange: -5
+      isConditional: 0
+      applyCondition: 
+    hasCondition: 0
+    showCondition: 
+  - choiceText: This might be a trap
+    nextNode: {fileID: 11400000, guid: 04f3c93518711b6499a146457adf3292, type: 2}
+    impacts:
+    - variableName: sanity
+      valueChange: -5
+      isConditional: 0
+      applyCondition: 
+    - variableName: trust_alina
+      valueChange: -10
+      isConditional: 0
+      applyCondition: 
+    hasCondition: 1
+    showCondition: sanity < 40
+  nextNodeIfAuto: {fileID: 0}
+  startCommands: []
+  endCommands: []
+  isEndNode: 0
+  displayDuration: 0

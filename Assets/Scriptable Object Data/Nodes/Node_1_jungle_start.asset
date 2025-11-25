@@ -10,46 +10,29 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 378236dd876293d43b3c76f4a19720be, type: 3}
-  m_Name: Node_A
+  m_Name: Node_1_jungle_start
   m_EditorClassIdentifier: 
-  nodeId: 
+  nodeId: jungle_start
   speaker: {fileID: 11400000, guid: 4a8c3185d13e75741aa7ad02124c743e, type: 2}
-  lineText: Test node line
+  lineText: I opened my eyes. The sky above me was bleeding red, and rain fell upward
+    into the void. Where... where am I?
   voiceClip: {fileID: 0}
   voiceDelay: 0
   choices:
-  - choiceText: Choice_Test
-    nextNode: {fileID: 0}
+  - choiceText: Look around carefully
+    nextNode: {fileID: 11400000, guid: b8ace6d07ef7c9349b7fdd57d4e81aa5, type: 2}
     impacts:
-    - variableName: 
-      valueChange: 0
+    - variableName: investigation_level
+      valueChange: 10
       isConditional: 0
       applyCondition: 
     hasCondition: 0
     showCondition: 
-  - choiceText: Choice_Test
-    nextNode: {fileID: 0}
+  - choiceText: Get up and move forward
+    nextNode: {fileID: 11400000, guid: b8ace6d07ef7c9349b7fdd57d4e81aa5, type: 2}
     impacts:
-    - variableName: 
-      valueChange: 0
-      isConditional: 0
-      applyCondition: 
-    hasCondition: 0
-    showCondition: 
-  - choiceText: Choice_Test
-    nextNode: {fileID: 0}
-    impacts:
-    - variableName: 
-      valueChange: 0
-      isConditional: 0
-      applyCondition: 
-    hasCondition: 0
-    showCondition: 
-  - choiceText: Choice_Test
-    nextNode: {fileID: 0}
-    impacts:
-    - variableName: 
-      valueChange: 0
+    - variableName: courage
+      valueChange: 5
       isConditional: 0
       applyCondition: 
     hasCondition: 0
@@ -57,5 +40,5 @@ MonoBehaviour:
   nextNodeIfAuto: {fileID: 0}
   startCommands: []
   endCommands: []
-  isEndNode: 1
+  isEndNode: 0
   displayDuration: 0

@@ -17,6 +17,8 @@ namespace WhisperingGate.Dialogue
         public event Action<DialogueNode> OnNodeDisplayed;
         public event Action OnDialogueEnded;
         public event Action<int> OnChoicesUpdated;
+        public event Action<string, int> OnImpactApplied;
+        public event Action<string> OnItemGiven;
         
         private DialogueNode currentNode;
         private DialogueTree currentTree;
@@ -185,6 +187,9 @@ namespace WhisperingGate.Dialogue
                 // Apply the impact
                 GameState.Instance.AddInt(impact.VariableName, impact.ValueChange);
                 Debug.Log($"[DialogueManager] Impact: {impact.VariableName} += {impact.ValueChange}");
+                
+                // Notify subscribers about the impact
+                OnImpactApplied?.Invoke(impact.VariableName, impact.ValueChange);
             }
         }
         
@@ -254,6 +259,7 @@ namespace WhisperingGate.Dialogue
             if (Gameplay.InventoryManager.Instance != null)
             {
                 Gameplay.InventoryManager.Instance.AddItem(itemId);
+                OnItemGiven?.Invoke(itemId);
             }
             else
             {
