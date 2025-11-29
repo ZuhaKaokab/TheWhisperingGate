@@ -17,8 +17,10 @@ namespace WhisperingGate.Gameplay
         [Header("Movement")]
         [SerializeField] private float walkSpeed = 4f;
         [SerializeField] private float sprintSpeed = 7f;
+        [SerializeField] private float crouchSpeed = 2f;
         [SerializeField] private float jumpHeight = 1.2f;
         [SerializeField] private float gravity = -25f;
+        [SerializeField] private float rotationSmoothTime = 0.15f;
 
         [Header("Camera")]
         [SerializeField] private Camera playerCamera;
@@ -28,6 +30,12 @@ namespace WhisperingGate.Gameplay
         [SerializeField] private float mouseSensitivity = 150f;
         [SerializeField] private Vector2 pitchLimits = new(-60f, 80f);
         [SerializeField] private KeyCode toggleViewKey = KeyCode.V;
+
+        [Header("Crouch")]
+        [SerializeField] private KeyCode crouchKey = KeyCode.LeftControl;
+        [SerializeField] private float crouchHeight = 0.5f;
+        [SerializeField] private float normalHeight = 2f;
+        [SerializeField] private float crouchTransitionSpeed = 8f;
 
         private CharacterController controller;
         private ViewMode currentViewMode = ViewMode.FirstPerson;
@@ -40,6 +48,30 @@ namespace WhisperingGate.Gameplay
         private float groundedTimer;
 
         [SerializeField] private float groundedGraceTime = 0.15f;
+
+        // Jump animation event support
+        private bool jumpRequested = false;
+        private bool isJumping = false;
+
+        // Crouch state
+        private bool isCrouched = false;
+        private float currentHeight;
+        private float targetHeight;
+
+        /// <summary>
+        /// Exposes vertical movement speed for animation systems.
+        /// </summary>
+        public float VerticalSpeed => verticalSpeed;
+
+        /// <summary>
+        /// Exposes crouch state for animation systems.
+        /// </summary>
+        public bool IsCrouched => isCrouched;
+
+        /// <summary>
+        /// Exposes jump request state for animation systems.
+        /// </summary>
+        public bool JumpRequested => jumpRequested;
 
         private void Awake()
         {
@@ -56,6 +88,14 @@ namespace WhisperingGate.Gameplay
 
             if (playerCamera != null)
                 playerCamera.transform.SetParent(null); // keep camera free for smooth follow
+
+            // Initialize heights
+            normalHeight = controller.height;
+            currentHeight = normalHeight;
+            targetHeight = normalHeight;
+            crouchHeight = normalHeight * 0.5f;
+
+            yaw = transform.eulerAngles.y;
 
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
@@ -85,18 +125,37 @@ namespace WhisperingGate.Gameplay
                 return;
 
             HandleViewToggle();
+            HandleCrouch();
             HandleLook();
             HandleMovement();
+            UpdateCrouchHeight();
             UpdateCamera();
         }
 
         private void HandleMovement()
         {
+            // Track jump state - clear when grounded
+            if (controller.isGrounded && isJumping)
+            {
+                isJumping = false;
+            }
+
             float horizontal = Input.GetAxisRaw("Horizontal");
             float vertical = Input.GetAxisRaw("Vertical");
-            Vector3 moveDirection = (transform.right * horizontal + transform.forward * vertical).normalized;
+            
+            // Disable horizontal movement during jump
+            Vector3 moveDirection;
+            if (isJumping)
+            {
+                moveDirection = Vector3.zero; // No horizontal movement during jump
+            }
+            else
+            {
+                moveDirection = (transform.right * horizontal + transform.forward * vertical).normalized;
+            }
 
-            float targetSpeed = Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed;
+            // Determine speed based on crouch and sprint
+            float targetSpeed = isCrouched ? crouchSpeed : (Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed);
             Vector3 motion = moveDirection * targetSpeed;
 
             if (controller.isGrounded)
@@ -112,9 +171,11 @@ namespace WhisperingGate.Gameplay
                 groundedTimer -= Time.deltaTime;
             }
 
-            if (groundedTimer > 0f && Input.GetButtonDown("Jump"))
+            // Request jump on button press (actual jump will be triggered by animation event)
+            if (groundedTimer > 0f && Input.GetButtonDown("Jump") && !isCrouched && !isJumping)
             {
-                verticalSpeed = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                jumpRequested = true;
+                isJumping = true; // Set jumping state immediately
                 groundedTimer = 0f;
             }
 
@@ -159,6 +220,31 @@ namespace WhisperingGate.Gameplay
             }
         }
 
+        private void HandleCrouch()
+        {
+            // Toggle crouch with Left Ctrl
+            if (Input.GetKeyDown(crouchKey))
+            {
+                isCrouched = !isCrouched;
+                targetHeight = isCrouched ? crouchHeight : normalHeight;
+            }
+            
+            // Exit crouch when pressing Shift (while crouched)
+            if (isCrouched && Input.GetKey(KeyCode.LeftShift))
+            {
+                isCrouched = false;
+                targetHeight = normalHeight;
+            }
+        }
+
+        private void UpdateCrouchHeight()
+        {
+            currentHeight = Mathf.Lerp(currentHeight, targetHeight, Time.deltaTime * crouchTransitionSpeed);
+            float heightDifference = normalHeight - currentHeight;
+            controller.height = currentHeight;
+            controller.center = new Vector3(0f, currentHeight * 0.5f, 0f);
+        }
+
         public void SetInputEnabled(bool enabled)
         {
             inputEnabled = enabled;
@@ -182,6 +268,19 @@ namespace WhisperingGate.Gameplay
         private void HandleDialogueEnded()
         {
             SetInputEnabled(true);
+        }
+
+        /// <summary>
+        /// Called from animation event at the specific frame when jump should occur.
+        /// This allows precise control over when the jump force is applied.
+        /// </summary>
+        public void OnJumpAnimationEvent()
+        {
+            if (jumpRequested && controller.isGrounded)
+            {
+                verticalSpeed = Mathf.Sqrt(jumpHeight * -2f * gravity);
+                jumpRequested = false;
+            }
         }
     }
 }

@@ -107,3 +107,7 @@ feat: Add impact notifications and stats panel UI
 All systems are event-driven and update automatically.
 ```
 
+
+
+
+

@@ -267,3 +267,7 @@ private void HandleImpactApplied(string variableName, int change)
 **Both systems are event-driven and automatically update. No manual refresh needed!**
 
 
+
+
+
+
