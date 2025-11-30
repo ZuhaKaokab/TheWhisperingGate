@@ -59,7 +59,7 @@ MonoBehaviour:
       applyCondition: 
     hasCondition: 1
     showCondition: investigation_level >= 20
-  nextNodeIfAuto: {fileID: 0}
+  nextNodeIfAuto: {fileID: 11400000, guid: 9f7d4a07dce035845ba3cc66f226704f, type: 2}
   startCommands: []
   endCommands: []
   isEndNode: 0

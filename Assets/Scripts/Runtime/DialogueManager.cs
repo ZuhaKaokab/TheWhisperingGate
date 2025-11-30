@@ -19,6 +19,7 @@ namespace WhisperingGate.Dialogue
         public event Action<int> OnChoicesUpdated;
         public event Action<string, int> OnImpactApplied;
         public event Action<string> OnItemGiven;
+        public event Action<DialogueNode> OnChoiceSelected; // Fired when a choice is selected, before advancing
         
         private DialogueNode currentNode;
         private DialogueTree currentTree;
@@ -57,6 +58,93 @@ namespace WhisperingGate.Dialogue
             isDialogueActive = true;
             ShowNode(tree.StartNode);
         }
+
+        /// <summary>
+        /// Starts a dialogue tree at a specific node. Useful for segmented dialogue flows.
+        /// </summary>
+        /// <param name="tree">The dialogue tree to use. Must not be null.</param>
+        /// <param name="startNode">The node to start from. Must not be null.</param>
+        public void StartDialogueAtNode(DialogueTree tree, DialogueNode startNode)
+        {
+            if (tree == null)
+            {
+                Debug.LogError("[DialogueManager] Tried to start null dialogue tree");
+                return;
+            }
+
+            if (startNode == null)
+            {
+                Debug.LogError("[DialogueManager] Tried to start dialogue with null start node");
+                return;
+            }
+
+            currentTree = tree;
+            isDialogueActive = true;
+            ShowNode(startNode);
+        }
+
+        /// <summary>
+        /// Starts a dialogue tree at a specific node by node ID. Searches for the node in the project.
+        /// </summary>
+        /// <param name="tree">The dialogue tree to use. Must not be null.</param>
+        /// <param name="nodeId">The ID of the node to start from.</param>
+        public void StartDialogueAtNodeId(DialogueTree tree, string nodeId)
+        {
+            if (tree == null)
+            {
+                Debug.LogError("[DialogueManager] Tried to start null dialogue tree");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(nodeId))
+            {
+                Debug.LogError("[DialogueManager] Tried to start dialogue with empty node ID");
+                return;
+            }
+
+            // Find the node by ID (search all DialogueNode assets)
+            DialogueNode targetNode = FindNodeById(nodeId);
+            
+            if (targetNode == null)
+            {
+                Debug.LogError($"[DialogueManager] Could not find node with ID: {nodeId}");
+                return;
+            }
+
+            StartDialogueAtNode(tree, targetNode);
+        }
+
+        /// <summary>
+        /// Finds a dialogue node by its ID by searching all DialogueNode assets in the project.
+        /// </summary>
+        private DialogueNode FindNodeById(string nodeId)
+        {
+            // Search all DialogueNode assets in the project
+            #if UNITY_EDITOR
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:DialogueNode");
+            foreach (string guid in guids)
+            {
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                DialogueNode node = UnityEditor.AssetDatabase.LoadAssetAtPath<DialogueNode>(path);
+                if (node != null && node.NodeId.Equals(nodeId, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return node;
+                }
+            }
+            #endif
+
+            // Fallback: search in Resources folder if needed
+            DialogueNode[] allNodes = Resources.FindObjectsOfTypeAll<DialogueNode>();
+            foreach (var node in allNodes)
+            {
+                if (node.NodeId.Equals(nodeId, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return node;
+                }
+            }
+
+            return null;
+        }
         
         /// <summary>
         /// Handles player choice selection. Applies impacts, executes commands, and advances to next node.
@@ -78,12 +166,28 @@ namespace WhisperingGate.Dialogue
             
             Debug.Log($"[DialogueManager] Choice selected: {choice.ChoiceText}");
             
+            // Notify subscribers that a choice was selected (before advancing)
+            OnChoiceSelected?.Invoke(currentNode);
+            
             // Apply impacts before moving to next node
             ApplyImpacts(choice.Impacts);
             
             // Execute end commands from current node
             foreach (var cmd in currentNode.EndCommands)
                 ExecuteCommand(cmd);
+            
+            // Check if next node is null (segment boundary)
+            if (choice.NextNode == null)
+            {
+                Debug.Log($"[DialogueManager] Choice leads to null node (segment boundary). Ending dialogue.");
+                EndDialogue();
+                return;
+            }
+            
+            // Check if we're trying to advance to a node that might be in a different segment
+            // This is a safety check - if the current tree's start node is different from where we're going,
+            // it might indicate a segment boundary
+            // Note: This is a heuristic - the proper solution is to set choices to null or mark node as End Node
             
             // Move to next node
             ShowNode(choice.NextNode);
@@ -96,14 +200,28 @@ namespace WhisperingGate.Dialogue
         {
             if (!isDialogueActive || currentNode == null) return;
             
-            if (currentNode.Choices.Count == 0)
+            // Check if there are any visible choices (not just total choices)
+            var visibleChoices = GetVisibleChoices();
+            if (visibleChoices.Count > 0)
             {
-                // Execute end commands before advancing
-                foreach (var cmd in currentNode.EndCommands)
-                    ExecuteCommand(cmd);
-                    
-                ShowNode(currentNode.NextNodeIfAuto);
+                Debug.Log($"[DialogueManager] Cannot auto-advance: node has {visibleChoices.Count} visible choices. Waiting for player input.");
+                return;
             }
+            
+            // No visible choices, check if there's an auto-advance node
+            if (currentNode.NextNodeIfAuto == null)
+            {
+                Debug.Log($"[DialogueManager] No visible choices and no NextNodeIfAuto. Ending dialogue.");
+                EndDialogue();
+                return;
+            }
+            
+            // Execute end commands before advancing
+            foreach (var cmd in currentNode.EndCommands)
+                ExecuteCommand(cmd);
+                
+            Debug.Log($"[DialogueManager] Auto-advancing to node: {currentNode.NextNodeIfAuto.NodeId}");
+            ShowNode(currentNode.NextNodeIfAuto);
         }
         
         public bool IsDialogueActive => isDialogueActive;
@@ -116,17 +234,45 @@ namespace WhisperingGate.Dialogue
         {
             var visibleChoices = new List<DialogueChoice>();
             
-            if (currentNode == null || GameState.Instance == null)
+            if (currentNode == null)
+            {
+                Debug.LogWarning("[DialogueManager] GetVisibleChoices called but currentNode is null");
                 return visibleChoices;
+            }
+
+            if (GameState.Instance == null)
+            {
+                Debug.LogWarning("[DialogueManager] GetVisibleChoices called but GameState.Instance is null. All choices will be hidden.");
+                return visibleChoices;
+            }
+            
+            Debug.Log($"[DialogueManager] Checking {currentNode.Choices.Count} choices for node '{currentNode.NodeId}'");
             
             foreach (var choice in currentNode.Choices)
             {
-                if (!choice.HasCondition || GameState.Instance.EvaluateCondition(choice.ShowCondition))
+                if (!choice.HasCondition)
                 {
+                    // No condition, always show
                     visibleChoices.Add(choice);
+                    Debug.Log($"[DialogueManager] Choice '{choice.ChoiceText}' is visible (no condition)");
+                }
+                else
+                {
+                    // Has condition, check if it's met
+                    bool conditionMet = GameState.Instance.EvaluateCondition(choice.ShowCondition);
+                    if (conditionMet)
+                    {
+                        visibleChoices.Add(choice);
+                        Debug.Log($"[DialogueManager] Choice '{choice.ChoiceText}' is visible (condition '{choice.ShowCondition}' met)");
+                    }
+                    else
+                    {
+                        Debug.Log($"[DialogueManager] Choice '{choice.ChoiceText}' is HIDDEN (condition '{choice.ShowCondition}' not met)");
+                    }
                 }
             }
             
+            Debug.Log($"[DialogueManager] Total visible choices: {visibleChoices.Count} out of {currentNode.Choices.Count}");
             return visibleChoices;
         }
         
@@ -153,11 +299,22 @@ namespace WhisperingGate.Dialogue
             int visibleChoiceCount = GetVisibleChoices().Count;
             OnChoicesUpdated?.Invoke(visibleChoiceCount);
             
-            // Auto-end if this is an end node
+            // Auto-end if this is an end node AND has no choices
+            // If it has choices, wait for player to make a choice first
             if (node.IsEndNode)
             {
-                float delay = node.DisplayDuration > 0 ? node.DisplayDuration : 3f;
-                Invoke(nameof(EndDialogue), delay);
+                if (visibleChoiceCount == 0)
+                {
+                    // No choices, auto-end after delay
+                    float delay = node.DisplayDuration > 0 ? node.DisplayDuration : 3f;
+                    Debug.Log($"[DialogueManager] Node '{node.NodeId}' is an end node with no choices. Ending dialogue in {delay} seconds.");
+                    Invoke(nameof(EndDialogue), delay);
+                }
+                else
+                {
+                    // Has choices, don't auto-end - wait for player choice
+                    Debug.Log($"[DialogueManager] Node '{node.NodeId}' is an end node but has {visibleChoiceCount} choices. Waiting for player input.");
+                }
             }
         }
         

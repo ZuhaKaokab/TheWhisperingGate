@@ -271,3 +271,4 @@ private void HandleImpactApplied(string variableName, int change)
 
 
 
+

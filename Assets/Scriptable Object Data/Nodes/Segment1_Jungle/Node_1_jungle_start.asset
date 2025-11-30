@@ -32,7 +32,7 @@ MonoBehaviour:
     nextNode: {fileID: 11400000, guid: b8ace6d07ef7c9349b7fdd57d4e81aa5, type: 2}
     impacts:
     - variableName: courage
-      valueChange: 5
+      valueChange: 10
       isConditional: 0
       applyCondition: 
     hasCondition: 0

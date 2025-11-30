@@ -167,8 +167,24 @@ namespace WhisperingGate.UI
             
             if (visibleChoices.Count == 0)
             {
-                // No choices, auto-advance after delay
-                StartCoroutine(WaitThenAdvance(autoAdvanceDelay));
+                // No visible choices, check if node has NextNodeIfAuto or is an end node
+                if (node != null && node.NextNodeIfAuto != null)
+                {
+                    // Has auto-advance node, wait then advance
+                    Debug.Log($"[DialogueUIPanel] No visible choices, auto-advancing to next node after {autoAdvanceDelay} seconds");
+                    StartCoroutine(WaitThenAdvance(autoAdvanceDelay));
+                }
+                else if (node != null && node.IsEndNode)
+                {
+                    // Is end node, dialogue will end automatically (DialogueManager handles this)
+                    Debug.Log($"[DialogueUIPanel] Node is an end node with no choices. Dialogue will end automatically.");
+                }
+                else
+                {
+                    // No choices and no next node, end dialogue
+                    Debug.Log($"[DialogueUIPanel] No visible choices and no next node. Ending dialogue.");
+                    StartCoroutine(WaitThenAdvance(autoAdvanceDelay));
+                }
                 return;
             }
             

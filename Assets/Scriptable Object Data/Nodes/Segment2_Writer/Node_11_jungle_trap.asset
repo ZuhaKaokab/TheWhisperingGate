@@ -10,19 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 378236dd876293d43b3c76f4a19720be, type: 3}
-  m_Name: Node_10_jungle_wait
+  m_Name: Node_11_jungle_trap
   m_EditorClassIdentifier: 
-  nodeId: jungle_wait
+  nodeId: jungle_trap
   speaker: {fileID: 11400000, guid: 4a8c3185d13e75741aa7ad02124c743e, type: 2}
-  lineText: I forced myself to stop. To think. The scream sounded real, but in this
-    place, nothing was what it seemed. I watched the path, listening for any other
-    sounds. After a moment, I saw movement, a figure in the shadows.
+  lineText: No. This had to be a trap. Alina couldn't be here. This whole place was
+    designed to lure me in, to make me desperate. I stayed where I was, my mind racing
+    with paranoia.
   voiceClip: {fileID: 0}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 4a31c11ac5810624bb81a145696aa189, type: 2}
   startCommands:
-  - flag:waited_observed
+  - flag:paranoid_choice
+  - var:sanity-10
   endCommands: []
-  isEndNode: 0
+  isEndNode: 1
   displayDuration: 0

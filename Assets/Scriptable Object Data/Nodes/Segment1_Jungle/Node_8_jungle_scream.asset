@@ -62,5 +62,5 @@ MonoBehaviour:
   nextNodeIfAuto: {fileID: 0}
   startCommands: []
   endCommands: []
-  isEndNode: 0
+  isEndNode: 1
   displayDuration: 0
