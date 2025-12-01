@@ -38,7 +38,8 @@ MonoBehaviour:
     hasCondition: 0
     showCondition: 
   nextNodeIfAuto: {fileID: 0}
-  startCommands: []
+  startCommands:
+  - cam:tree
   endCommands: []
   isEndNode: 0
   displayDuration: 0

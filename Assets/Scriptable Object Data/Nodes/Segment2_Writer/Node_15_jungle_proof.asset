@@ -27,5 +27,5 @@ MonoBehaviour:
   - flag:met_writer
   - var:investigation_level+10
   endCommands: []
-  isEndNode: 0
+  isEndNode: 1
   displayDuration: 0

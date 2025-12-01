@@ -27,5 +27,5 @@ MonoBehaviour:
   - flag:met_writer
   - ending:trust_path
   endCommands: []
-  isEndNode: 0
+  isEndNode: 1
   displayDuration: 0

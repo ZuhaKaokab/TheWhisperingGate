@@ -1,5 +1,6 @@
 using UnityEngine;
 using WhisperingGate.Dialogue;
+using CameraFocus = WhisperingGate.Camera;
 
 namespace WhisperingGate.Gameplay
 {
@@ -23,7 +24,7 @@ namespace WhisperingGate.Gameplay
         [SerializeField] private float rotationSmoothTime = 0.15f;
 
         [Header("Camera")]
-        [SerializeField] private Camera playerCamera;
+        [SerializeField] private UnityEngine.Camera playerCamera;
         [SerializeField] private Transform firstPersonAnchor;
         [SerializeField] private Transform thirdPersonAnchor;
         [SerializeField] private float cameraSmoothTime = 0.08f;
@@ -84,7 +85,7 @@ namespace WhisperingGate.Gameplay
 
             controller = GetComponent<CharacterController>();
             if (playerCamera == null)
-                playerCamera = Camera.main;
+                playerCamera = UnityEngine.Camera.main;
 
             if (playerCamera != null)
                 playerCamera.transform.SetParent(null); // keep camera free for smooth follow
@@ -199,6 +200,10 @@ namespace WhisperingGate.Gameplay
         private void UpdateCamera()
         {
             if (playerCamera == null)
+                return;
+
+            // Skip camera updates if CameraFocusController is handling the camera
+            if (CameraFocus.CameraFocusController.Instance != null && CameraFocus.CameraFocusController.Instance.IsFocusing)
                 return;
 
             Transform targetAnchor = currentViewMode == ViewMode.FirstPerson ? firstPersonAnchor : thirdPersonAnchor;

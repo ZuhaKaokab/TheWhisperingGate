@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using WhisperingGate.Dialogue;
 using WhisperingGate.Core;
+using WhisperingGate.Camera;
 
 namespace WhisperingGate.Dialogue
 {
@@ -398,6 +399,10 @@ namespace WhisperingGate.Dialogue
                         GameState.Instance.SetString("current_ending_path", param);
                     break;
                 
+                case "cam":
+                    HandleCameraCommand(param);
+                    break;
+                
                 default:
                     Debug.LogWarning($"[DialogueManager] Unknown command: {cmd}");
                     break;
@@ -421,6 +426,36 @@ namespace WhisperingGate.Dialogue
             else
             {
                 Debug.LogWarning("[DialogueManager] InventoryManager not found. Item command ignored.");
+            }
+        }
+
+        /// <summary>
+        /// Handles camera focus commands.
+        /// Supported: cam:focus_point_id (focus on point), cam:reset (release focus)
+        /// </summary>
+        private void HandleCameraCommand(string param)
+        {
+            if (CameraFocusController.Instance == null)
+            {
+                Debug.LogWarning("[DialogueManager] CameraFocusController not found. Camera command ignored.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(param))
+            {
+                Debug.LogWarning("[DialogueManager] Camera command called with empty parameter");
+                return;
+            }
+
+            string target = param.ToLower().Trim();
+
+            if (target == "reset" || target == "release" || target == "free")
+            {
+                CameraFocusController.Instance.ReleaseFocus();
+            }
+            else
+            {
+                CameraFocusController.Instance.FocusOn(target);
             }
         }
         

@@ -1557,6 +1557,7 @@ MonoBehaviour:
   singleUse: 0
   pausePlayerDuringDialogue: 1
   segmentId: meet_writer
+  endOnSegmentBoundary: 1
   requiredSegments: jungle_awakening
   requiredCondition: 
   showInteractionPrompt: 1
@@ -2778,6 +2779,7 @@ MonoBehaviour:
   singleUse: 0
   pausePlayerDuringDialogue: 1
   segmentId: prologue_ending
+  endOnSegmentBoundary: 1
   requiredSegments: meet_writer
   requiredCondition: 
   showInteractionPrompt: 1
@@ -3072,6 +3074,7 @@ MonoBehaviour:
   singleUse: 0
   pausePlayerDuringDialogue: 1
   segmentId: jungle_awakening
+  endOnSegmentBoundary: 1
   requiredSegments: 
   requiredCondition: 
   showInteractionPrompt: 1
@@ -3334,6 +3337,56 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!1 &891998684
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 891998686}
+  - component: {fileID: 891998685}
+  m_Layer: 0
+  m_Name: FocusPoint_Tree
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &891998685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 891998684}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d124dd61bed71ba4b9f41e0fe2553bc9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointId: tree
+  showFrustumPreview: 1
+  previewDistance: 5
+  previewFOV: 60
+  gizmoColor: {r: 0, g: 1, b: 1, a: 1}
+  gizmoSize: 0.5
+--- !u!4 &891998686
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 891998684}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: -0.9822089, z: 0, w: 0.18779156}
+  m_LocalPosition: {x: 3.51, y: 2.4324608, z: 8.21}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &954427749
 GameObject:
   m_ObjectHideFlags: 0
@@ -4718,6 +4771,59 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: -399}
   m_SizeDelta: {x: 0, y: 100}
   m_Pivot: {x: 0.5, y: 1}
+--- !u!1 &1772439021
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1772439023}
+  - component: {fileID: 1772439022}
+  m_Layer: 0
+  m_Name: CameraFocusController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1772439022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1772439021}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bde60290bbd6f647a3e6006ac637c8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  positionTransitionSpeed: 5
+  rotationTransitionSpeed: 5
+  returnSpeed: 8
+  allowPlayerLook: 1
+  allowedPitchRange: 15
+  allowedYawRange: 20
+  playerLookSensitivity: 50
+  lookReturnSpeed: 5
+  targetCamera: {fileID: 963194227}
+--- !u!4 &1772439023
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1772439021}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -5.6319847, y: 2.4324608, z: 12.311169}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1781347716
 GameObject:
   m_ObjectHideFlags: 0
@@ -8264,6 +8370,7 @@ SceneRoots:
   - {fileID: 552960678}
   - {fileID: 122988287}
   - {fileID: 1933985985}
+  - {fileID: 1772439023}
   - {fileID: 424752810}
   - {fileID: 1667948263}
   - {fileID: 1560157799}
@@ -8273,3 +8380,4 @@ SceneRoots:
   - {fileID: 392234568}
   - {fileID: 726954680}
   - {fileID: 543450653313677254}
+  - {fileID: 891998686}

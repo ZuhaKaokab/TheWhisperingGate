@@ -25,4 +25,4 @@ MonoBehaviour:
   - flag:prologue_complete
   endCommands: []
   isEndNode: 1
-  displayDuration: 0
+  displayDuration: 12

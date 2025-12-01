@@ -25,5 +25,5 @@ MonoBehaviour:
   - item:ritual_journal
   - flag:met_writer
   endCommands: []
-  isEndNode: 0
+  isEndNode: 1
   displayDuration: 0
