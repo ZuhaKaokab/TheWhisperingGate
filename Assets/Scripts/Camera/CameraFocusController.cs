@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using WhisperingGate.Dialogue;
 
@@ -21,6 +22,10 @@ namespace WhisperingGate.Camera
         [Tooltip("How fast camera returns to player")]
         [SerializeField] private float returnSpeed = 8f;
 
+        [Header("Auto Return Settings")]
+        [Tooltip("Default duration to hold focus before auto-returning (0 = no auto-return)")]
+        [SerializeField] private float defaultHoldDuration = 0f;
+
         [Header("Player Look During Focus")]
         [Tooltip("Allow player to look around slightly while at focus point")]
         [SerializeField] private bool allowPlayerLook = true;
@@ -36,6 +41,7 @@ namespace WhisperingGate.Camera
         private bool isFocusing = false;
         private bool isReturning = false;
         private Transform currentFocusTarget;
+        private Coroutine autoReturnCoroutine;
         
         // Player look offsets
         private float pitchOffset = 0f;
@@ -132,7 +138,9 @@ namespace WhisperingGate.Camera
         /// <summary>
         /// Move camera to a named focus point. Camera adopts the point's position and rotation.
         /// </summary>
-        public void FocusOn(string pointId)
+        /// <param name="pointId">The ID of the focus point</param>
+        /// <param name="holdDuration">Duration to hold before auto-return. 0 or negative = no auto-return</param>
+        public void FocusOn(string pointId, float holdDuration = -1f)
         {
             if (string.IsNullOrWhiteSpace(pointId))
             {
@@ -148,14 +156,18 @@ namespace WhisperingGate.Camera
                 return;
             }
 
-            StartFocus(target);
-            Debug.Log($"[CameraFocus] Moving camera to: {pointId}");
+            // Use default duration if not specified
+            float duration = holdDuration < 0 ? defaultHoldDuration : holdDuration;
+            StartFocus(target, duration);
+            Debug.Log($"[CameraFocus] Moving camera to: {pointId}" + (duration > 0 ? $" (auto-return in {duration}s)" : ""));
         }
 
         /// <summary>
         /// Move camera to a specific transform directly.
         /// </summary>
-        public void FocusOn(Transform target)
+        /// <param name="target">The transform to focus on</param>
+        /// <param name="holdDuration">Duration to hold before auto-return. 0 or negative = no auto-return</param>
+        public void FocusOn(Transform target, float holdDuration = -1f)
         {
             if (target == null)
             {
@@ -163,17 +175,44 @@ namespace WhisperingGate.Camera
                 return;
             }
 
-            StartFocus(target);
-            Debug.Log($"[CameraFocus] Moving camera to: {target.name}");
+            // Use default duration if not specified
+            float duration = holdDuration < 0 ? defaultHoldDuration : holdDuration;
+            StartFocus(target, duration);
+            Debug.Log($"[CameraFocus] Moving camera to: {target.name}" + (duration > 0 ? $" (auto-return in {duration}s)" : ""));
         }
 
-        private void StartFocus(Transform target)
+        private void StartFocus(Transform target, float holdDuration = 0f)
         {
+            // Cancel any existing auto-return
+            if (autoReturnCoroutine != null)
+            {
+                StopCoroutine(autoReturnCoroutine);
+                autoReturnCoroutine = null;
+            }
+
             currentFocusTarget = target;
             isFocusing = true;
             isReturning = false;
             pitchOffset = 0f;
             yawOffset = 0f;
+
+            // Start auto-return if duration is positive
+            if (holdDuration > 0f)
+            {
+                autoReturnCoroutine = StartCoroutine(AutoReturnAfterDelay(holdDuration));
+            }
+        }
+
+        /// <summary>
+        /// Coroutine that waits for the specified duration then releases focus.
+        /// </summary>
+        private IEnumerator AutoReturnAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            
+            Debug.Log($"[CameraFocus] Auto-returning after {delay}s hold");
+            ReleaseFocus();
+            autoReturnCoroutine = null;
         }
 
         /// <summary>
@@ -183,6 +222,13 @@ namespace WhisperingGate.Camera
         public void ReleaseFocus()
         {
             if (!isFocusing) return;
+
+            // Cancel any pending auto-return
+            if (autoReturnCoroutine != null)
+            {
+                StopCoroutine(autoReturnCoroutine);
+                autoReturnCoroutine = null;
+            }
 
             isFocusing = false;
             isReturning = true;

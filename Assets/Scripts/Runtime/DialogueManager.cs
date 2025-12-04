@@ -431,7 +431,10 @@ namespace WhisperingGate.Dialogue
 
         /// <summary>
         /// Handles camera focus commands.
-        /// Supported: cam:focus_point_id (focus on point), cam:reset (release focus)
+        /// Supported formats:
+        /// - cam:focus_point_id (focus on point, no auto-return)
+        /// - cam:focus_point_id:3 (focus on point, auto-return after 3 seconds)
+        /// - cam:reset (release focus)
         /// </summary>
         private void HandleCameraCommand(string param)
         {
@@ -447,7 +450,15 @@ namespace WhisperingGate.Dialogue
                 return;
             }
 
-            string target = param.ToLower().Trim();
+            // Check if param contains a duration (format: point_id:duration)
+            string[] parts = param.Split(':');
+            string target = parts[0].ToLower().Trim();
+            float duration = -1f; // -1 means use controller's default
+
+            if (parts.Length > 1 && float.TryParse(parts[1].Trim(), out float parsedDuration))
+            {
+                duration = parsedDuration;
+            }
 
             if (target == "reset" || target == "release" || target == "free")
             {
@@ -455,7 +466,7 @@ namespace WhisperingGate.Dialogue
             }
             else
             {
-                CameraFocusController.Instance.FocusOn(target);
+                CameraFocusController.Instance.FocusOn(target, duration);
             }
         }
         

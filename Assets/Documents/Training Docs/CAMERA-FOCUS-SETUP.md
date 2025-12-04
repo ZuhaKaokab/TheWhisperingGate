@@ -25,6 +25,7 @@ The Camera Focus System moves the camera to predefined positions during dialogue
 - Position Transition Speed: 5 (how fast camera moves to point)
 - Rotation Transition Speed: 5 (how fast camera rotates to view direction)
 - Return Speed: 8 (how fast camera returns to player)
+- Default Hold Duration: 0 (0 = no auto-return, or set a default like 3 seconds)
 - Allow Player Look: true (let player look around slightly)
 - Allowed Pitch/Yaw Range: 15-20 degrees
 
@@ -52,11 +53,17 @@ CamPoint_WriterFace  → Looking at writer's face
 Add camera commands to your dialogue nodes:
 
 ```
-cam:sky          → Camera moves to sky viewpoint
-cam:treewide     → Camera moves to tree wide shot
-cam:dollclose    → Camera moves to doll close-up
-cam:reset        → Return camera to player control
+cam:sky          → Camera moves to sky viewpoint (stays until reset or dialogue ends)
+cam:treewide:3   → Camera moves to tree wide shot, auto-returns after 3 seconds
+cam:dollclose:5  → Camera moves to doll close-up, auto-returns after 5 seconds
+cam:reset        → Return camera to player control immediately
 ```
+
+**Duration Parameter:**
+- Add `:seconds` after the point ID for auto-return
+- `cam:point_id` = Stays focused until manually reset or dialogue ends
+- `cam:point_id:3` = Auto-returns to player after 3 seconds
+- Great for puzzle completion cutscenes or quick reactions
 
 ---
 
