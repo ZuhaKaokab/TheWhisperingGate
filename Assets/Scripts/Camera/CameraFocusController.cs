@@ -36,12 +36,19 @@ namespace WhisperingGate.Camera
 
         [Header("References")]
         [SerializeField] private UnityEngine.Camera targetCamera;
+        [Tooltip("The transform the camera should return to (e.g., player's camera anchor). Auto-finds if empty.")]
+        [SerializeField] private Transform returnAnchor;
 
         // Focus state
         private bool isFocusing = false;
         private bool isReturning = false;
         private Transform currentFocusTarget;
         private Coroutine autoReturnCoroutine;
+        
+        // Original camera state (for returning)
+        private Vector3 originalPosition;
+        private Quaternion originalRotation;
+        private Transform playerCameraAnchor;
         
         // Player look offsets
         private float pitchOffset = 0f;
@@ -104,6 +111,43 @@ namespace WhisperingGate.Camera
             if (isFocusing && currentFocusTarget != null)
             {
                 UpdateFocusCamera();
+            }
+            else if (isReturning)
+            {
+                UpdateReturnCamera();
+            }
+        }
+
+        private void UpdateReturnCamera()
+        {
+            // Determine return target - use anchor if available, otherwise stored position
+            Vector3 targetPos = returnAnchor != null ? returnAnchor.position : originalPosition;
+            Quaternion targetRot = returnAnchor != null ? returnAnchor.rotation : originalRotation;
+
+            // Smoothly return to original position
+            targetCamera.transform.position = Vector3.Lerp(
+                targetCamera.transform.position,
+                targetPos,
+                returnSpeed * Time.deltaTime
+            );
+
+            targetCamera.transform.rotation = Quaternion.Slerp(
+                targetCamera.transform.rotation,
+                targetRot,
+                returnSpeed * Time.deltaTime
+            );
+
+            // Check if we're close enough to finish returning
+            float posDistance = Vector3.Distance(targetCamera.transform.position, targetPos);
+            float rotAngle = Quaternion.Angle(targetCamera.transform.rotation, targetRot);
+
+            if (posDistance < 0.05f && rotAngle < 1f)
+            {
+                // Snap to final position and finish return
+                targetCamera.transform.position = targetPos;
+                targetCamera.transform.rotation = targetRot;
+                isReturning = false;
+                Debug.Log("[CameraFocus] Return complete, player has control");
             }
         }
 
@@ -190,6 +234,13 @@ namespace WhisperingGate.Camera
                 autoReturnCoroutine = null;
             }
 
+            // Store original camera position/rotation for return
+            if (targetCamera != null)
+            {
+                originalPosition = targetCamera.transform.position;
+                originalRotation = targetCamera.transform.rotation;
+            }
+
             currentFocusTarget = target;
             isFocusing = true;
             isReturning = false;
@@ -217,7 +268,7 @@ namespace WhisperingGate.Camera
 
         /// <summary>
         /// Release focus and return camera control to player.
-        /// PlayerController will resume handling camera position/rotation.
+        /// Camera will smoothly transition back to original position.
         /// </summary>
         public void ReleaseFocus()
         {
@@ -236,17 +287,7 @@ namespace WhisperingGate.Camera
             pitchOffset = 0f;
             yawOffset = 0f;
 
-            // isReturning will be cleared when PlayerController takes over
-            // We just need to stop controlling the camera
-            Debug.Log("[CameraFocus] Focus released, returning to player control");
-            
-            // Clear returning flag after a short delay (PlayerController will take over)
-            Invoke(nameof(ClearReturning), 0.5f);
-        }
-
-        private void ClearReturning()
-        {
-            isReturning = false;
+            Debug.Log("[CameraFocus] Focus released, smoothly returning to player");
         }
 
         private void UpdateFocusCamera()

@@ -202,8 +202,9 @@ namespace WhisperingGate.Gameplay
             if (playerCamera == null)
                 return;
 
-            // Skip camera updates if CameraFocusController is handling the camera
-            if (CameraFocus.CameraFocusController.Instance != null && CameraFocus.CameraFocusController.Instance.IsFocusing)
+            // Skip camera updates if CameraFocusController is handling the camera (focusing or returning)
+            if (CameraFocus.CameraFocusController.Instance != null && 
+                (CameraFocus.CameraFocusController.Instance.IsFocusing || CameraFocus.CameraFocusController.Instance.IsReturning))
                 return;
 
             Transform targetAnchor = currentViewMode == ViewMode.FirstPerson ? firstPersonAnchor : thirdPersonAnchor;

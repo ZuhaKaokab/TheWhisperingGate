@@ -17,29 +17,19 @@ MonoBehaviour:
   cols: 5
   mode: 0
   correctPath:
-  - {x: 0, y: 0}
-  - {x: 1, y: 0}
   - {x: 2, y: 0}
   - {x: 2, y: 1}
   - {x: 2, y: 2}
   - {x: 2, y: 3}
-  - {x: 3, y: 3}
-  - {x: 3, y: 2}
-  - {x: 4, y: 2}
-  - {x: 4, y: 3}
-  - {x: 4, y: 4}
-  - {x: 3, y: 4}
   - {x: 2, y: 4}
-  - {x: 1, y: 4}
-  - {x: 0, y: 4}
   safeTiles: []
-  startTile: {x: 0, y: 0}
-  endTile: {x: 0, y: 4}
+  startTile: {x: 2, y: 0}
+  endTile: {x: 2, y: 4}
   tileSinkDepth: 0.15
   tileMoveSpeed: 5
   onSolvedCommands:
   - flag:grid_puzzle_solved
-  - cam:test
+  - cam:test:3
   onFailedCommands: []
   correctStepSFX: puzzle_step_correct
   wrongStepSFX: puzzle_step_wrong

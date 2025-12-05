@@ -7,52 +7,253 @@ using WhisperingGate.Dialogue;
 namespace WhisperingGate.Editor
 {
     /// <summary>
-    /// Main editor window for creating and editing dialogue trees visually.
-    /// Provides node-based graph view, inspector panel, and real-time preview.
+    /// Modern visual dialogue editor with node-based graph view.
+    /// Features zoom, pan, dark theme, and persistent node layouts.
     /// </summary>
     public class DialogueEditorWindow : EditorWindow
     {
         private DialogueTree currentTree;
+        private string currentTreeGUID;
         private DialogueNode selectedNode;
         private SerializedObject selectedNodeSO;
         private SerializedObject currentTreeSO;
-        private Vector2 graphScrollPos;
+        private Vector2 graphOffset = Vector2.zero;
         private Vector2 inspectorScrollPos;
         private Dictionary<DialogueNode, Rect> nodeRects = new();
         private Dictionary<DialogueNode, Vector2> nodePositions = new();
         private bool isDragging = false;
+        private bool isPanning = false;
         private DialogueNode draggedNode;
         private Vector2 dragOffset;
+        private Rect graphViewRect;
         
-        private const float NODE_WIDTH = 200f;
-        private const float NODE_HEIGHT = 100f;
-        private const float INSPECTOR_WIDTH = 350f;
-        private const float STATUS_HEIGHT = 30f;
+        // Zoom settings
+        private float zoomLevel = 1f;
+        private const float MIN_ZOOM = 0.2f;
+        private const float MAX_ZOOM = 2f;
+        private const float ZOOM_STEP = 0.1f;
+        
+        // Canvas settings
+        private const float NODE_WIDTH = 220f;
+        private const float NODE_HEIGHT = 90f;
+        private const float INSPECTOR_WIDTH = 400f;
+        private const float TOOLBAR_HEIGHT = 25f;
+        private const float STATUS_HEIGHT = 24f;
+        private const float GRID_SIZE = 20f;
+        private const float GRID_SIZE_LARGE = 100f;
+        
+        // Persistence key prefix
+        private const string PREFS_PREFIX = "DialogueEditor_";
+        
+        // Modern color palette (dark theme)
+        private static readonly Color BG_COLOR = new Color(0.12f, 0.12f, 0.14f);
+        private static readonly Color GRID_COLOR_SMALL = new Color(1f, 1f, 1f, 0.03f);
+        private static readonly Color GRID_COLOR_LARGE = new Color(1f, 1f, 1f, 0.06f);
+        private static readonly Color NODE_BG = new Color(0.22f, 0.22f, 0.25f);
+        private static readonly Color NODE_BORDER = new Color(0.35f, 0.35f, 0.38f);
+        private static readonly Color NODE_SELECTED = new Color(0.4f, 0.7f, 1f, 0.9f);
+        private static readonly Color NODE_START = new Color(0.3f, 0.8f, 0.4f, 0.9f);
+        private static readonly Color NODE_END = new Color(0.9f, 0.35f, 0.35f, 0.9f);
+        private static readonly Color PANEL_BG = new Color(0.16f, 0.16f, 0.18f);
+        private static readonly Color CONNECTION_COLOR = new Color(0.7f, 0.7f, 0.7f, 0.8f);
+        private static readonly Color CONNECTION_AUTO = new Color(0.4f, 0.85f, 0.95f, 0.9f);
+        private static readonly Color CONNECTION_CONDITION = new Color(1f, 0.85f, 0.3f, 0.9f);
+        
+        // Cached styles
+        private GUIStyle nodeTitleStyle;
+        private GUIStyle nodeSubtitleStyle;
+        private GUIStyle panelHeaderStyle;
+        private GUIStyle statusLabelStyle;
+        private bool stylesInitialized = false;
+        private bool showAllNodes = false;
+        
+        // Cached data for performance
+        private List<DialogueNode> cachedNodes;
+        private HashSet<DialogueNode> cachedConnectedNodes;
+        private bool nodesCacheDirty = true;
         
         [MenuItem("Window/Whispering Gate/Dialogue Editor")]
         public static void ShowWindow()
         {
             var window = GetWindow<DialogueEditorWindow>("Dialogue Editor");
             window.minSize = new Vector2(1200, 700);
-            window.maxSize = new Vector2(4096, 4096);
-            
-            // Set reasonable default size
-            if (window.position.width < 1200)
-                window.position = new Rect(window.position.x, window.position.y, 1200, 800);
+            window.wantsMouseMove = true;
+            window.Show();
         }
         
         void OnEnable()
         {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+            Undo.undoRedoPerformed += OnUndoRedo;
+            stylesInitialized = false;
+            nodesCacheDirty = true;
+            
+            // Try to restore last opened tree
+            string lastTreeGUID = EditorPrefs.GetString(PREFS_PREFIX + "LastTree", "");
+            if (!string.IsNullOrEmpty(lastTreeGUID))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(lastTreeGUID);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    currentTree = AssetDatabase.LoadAssetAtPath<DialogueTree>(path);
+                    if (currentTree != null)
+                    {
+                        currentTreeGUID = lastTreeGUID;
+                        currentTreeSO = new SerializedObject(currentTree);
+                        LoadNodePositions();
+                        LoadViewState();
+                    }
+                }
+            }
         }
         
         void OnDisable()
         {
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            Undo.undoRedoPerformed -= OnUndoRedo;
+            
+            // Save on close
+            SaveNodePositions();
+            SaveViewState();
+        }
+        
+        private void OnUndoRedo()
+        {
+            InvalidateNodeCache();
+            Repaint();
+        }
+        
+        #region Position Persistence
+        
+        private void SaveNodePositions()
+        {
+            if (currentTree == null || string.IsNullOrEmpty(currentTreeGUID)) return;
+            
+            // Build position data string: "nodeGUID:x:y|nodeGUID:x:y|..."
+            List<string> positionData = new List<string>();
+            
+            foreach (var kvp in nodePositions)
+            {
+                if (kvp.Key == null) continue;
+                
+                string nodePath = AssetDatabase.GetAssetPath(kvp.Key);
+                string nodeGUID = AssetDatabase.AssetPathToGUID(nodePath);
+                
+                if (!string.IsNullOrEmpty(nodeGUID))
+                {
+                    positionData.Add($"{nodeGUID}:{kvp.Value.x:F1}:{kvp.Value.y:F1}");
+                }
+            }
+            
+            string dataString = string.Join("|", positionData);
+            EditorPrefs.SetString(PREFS_PREFIX + "Positions_" + currentTreeGUID, dataString);
+            EditorPrefs.SetString(PREFS_PREFIX + "LastTree", currentTreeGUID);
+        }
+        
+        private void LoadNodePositions()
+        {
+            if (currentTree == null || string.IsNullOrEmpty(currentTreeGUID)) return;
+            
+            string dataString = EditorPrefs.GetString(PREFS_PREFIX + "Positions_" + currentTreeGUID, "");
+            if (string.IsNullOrEmpty(dataString)) return;
+            
+            nodePositions.Clear();
+            
+            string[] entries = dataString.Split('|');
+            foreach (string entry in entries)
+            {
+                string[] parts = entry.Split(':');
+                if (parts.Length != 3) continue;
+                
+                string nodeGUID = parts[0];
+                if (!float.TryParse(parts[1], out float x)) continue;
+                if (!float.TryParse(parts[2], out float y)) continue;
+                
+                string nodePath = AssetDatabase.GUIDToAssetPath(nodeGUID);
+                if (string.IsNullOrEmpty(nodePath)) continue;
+                
+                DialogueNode node = AssetDatabase.LoadAssetAtPath<DialogueNode>(nodePath);
+                if (node != null)
+                {
+                    nodePositions[node] = new Vector2(x, y);
+                }
+            }
+        }
+        
+        private void SaveViewState()
+        {
+            if (string.IsNullOrEmpty(currentTreeGUID)) return;
+            
+            EditorPrefs.SetFloat(PREFS_PREFIX + "Zoom_" + currentTreeGUID, zoomLevel);
+            EditorPrefs.SetFloat(PREFS_PREFIX + "OffsetX_" + currentTreeGUID, graphOffset.x);
+            EditorPrefs.SetFloat(PREFS_PREFIX + "OffsetY_" + currentTreeGUID, graphOffset.y);
+        }
+        
+        private void LoadViewState()
+        {
+            if (string.IsNullOrEmpty(currentTreeGUID)) return;
+            
+            zoomLevel = EditorPrefs.GetFloat(PREFS_PREFIX + "Zoom_" + currentTreeGUID, 1f);
+            graphOffset.x = EditorPrefs.GetFloat(PREFS_PREFIX + "OffsetX_" + currentTreeGUID, 0f);
+            graphOffset.y = EditorPrefs.GetFloat(PREFS_PREFIX + "OffsetY_" + currentTreeGUID, 0f);
+        }
+        
+        #endregion
+        
+        private void InitializeStyles()
+        {
+            if (stylesInitialized && nodeTitleStyle != null) return;
+            
+            nodeTitleStyle = new GUIStyle(EditorStyles.boldLabel);
+            nodeTitleStyle.fontSize = 12;
+            nodeTitleStyle.normal.textColor = Color.white;
+            nodeTitleStyle.alignment = TextAnchor.MiddleLeft;
+            nodeTitleStyle.clipping = TextClipping.Clip;
+            
+            nodeSubtitleStyle = new GUIStyle(EditorStyles.label);
+            nodeSubtitleStyle.fontSize = 10;
+            nodeSubtitleStyle.normal.textColor = new Color(0.7f, 0.7f, 0.7f);
+            nodeSubtitleStyle.alignment = TextAnchor.UpperLeft;
+            nodeSubtitleStyle.wordWrap = true;
+            nodeSubtitleStyle.clipping = TextClipping.Clip;
+            
+            panelHeaderStyle = new GUIStyle(EditorStyles.boldLabel);
+            panelHeaderStyle.fontSize = 12;
+            panelHeaderStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f);
+            panelHeaderStyle.padding = new RectOffset(0, 0, 6, 6);
+            panelHeaderStyle.margin = new RectOffset(0, 0, 0, 0);
+            
+            statusLabelStyle = new GUIStyle(EditorStyles.label);
+            statusLabelStyle.fontSize = 11;
+            statusLabelStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+            
+            stylesInitialized = true;
+        }
+        
+        private void InvalidateNodeCache()
+        {
+            nodesCacheDirty = true;
+        }
+        
+        private void RefreshNodeCache()
+        {
+            if (!nodesCacheDirty) return;
+            
+            cachedNodes = showAllNodes ? GetAllNodesInProject() : GetAllNodes();
+            cachedConnectedNodes = new HashSet<DialogueNode>(GetAllNodes());
+            nodesCacheDirty = false;
         }
         
         void OnGUI()
         {
+            InitializeStyles();
+            RefreshNodeCache();
+            
+            EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), BG_COLOR);
+            
+            Event e = Event.current;
+            HandleInputEvents(e);
+            
             DrawToolbar();
             
             if (currentTree == null)
@@ -61,60 +262,223 @@ namespace WhisperingGate.Editor
                 return;
             }
             
-            // Ensure inspector width is reasonable
-            float inspectorWidth = Mathf.Clamp(INSPECTOR_WIDTH, 300, position.width * 0.4f);
+            float inspectorWidth = Mathf.Clamp(INSPECTOR_WIDTH, 350, position.width * 0.4f);
             float graphWidth = position.width - inspectorWidth;
             
-            Rect graphRect = new Rect(0, 20, graphWidth, position.height - STATUS_HEIGHT);
-            Rect inspectorRect = new Rect(graphWidth, 20, inspectorWidth, position.height - STATUS_HEIGHT);
+            graphViewRect = new Rect(0, TOOLBAR_HEIGHT, graphWidth, position.height - TOOLBAR_HEIGHT - STATUS_HEIGHT);
+            Rect inspectorRect = new Rect(graphWidth, TOOLBAR_HEIGHT, inspectorWidth, position.height - TOOLBAR_HEIGHT - STATUS_HEIGHT);
             Rect statusRect = new Rect(0, position.height - STATUS_HEIGHT, position.width, STATUS_HEIGHT);
             
-            DrawGraphView(graphRect);
+            EditorGUI.DrawRect(new Rect(graphWidth - 1, TOOLBAR_HEIGHT, 2, position.height - TOOLBAR_HEIGHT - STATUS_HEIGHT), 
+                new Color(0, 0, 0, 0.5f));
+            
+            DrawGraphView(graphViewRect);
             DrawInspectorPanel(inspectorRect);
             DrawStatusBar(statusRect);
-            
-            HandleEvents();
         }
         
-        private bool showAllNodes = false;
+        private void HandleInputEvents(Event e)
+        {
+            // Handle zoom with scroll wheel
+            if (e.type == EventType.ScrollWheel && graphViewRect.Contains(e.mousePosition))
+            {
+                Vector2 mouseInGraph = e.mousePosition - graphViewRect.position;
+                Vector2 graphPosBefore = (mouseInGraph - graphOffset) / zoomLevel;
+                
+                float oldZoom = zoomLevel;
+                zoomLevel -= e.delta.y * ZOOM_STEP * 0.1f;
+                zoomLevel = Mathf.Clamp(zoomLevel, MIN_ZOOM, MAX_ZOOM);
+                
+                // Zoom towards mouse
+                if (oldZoom != zoomLevel)
+                {
+                    Vector2 graphPosAfter = graphPosBefore * zoomLevel + graphOffset;
+                    graphOffset += mouseInGraph - graphPosAfter;
+                }
+                
+                e.Use();
+                Repaint();
+                return;
+            }
+            
+            // Pan with middle mouse
+            if (e.type == EventType.MouseDown && e.button == 2 && graphViewRect.Contains(e.mousePosition))
+            {
+                isPanning = true;
+                e.Use();
+                return;
+            }
+            
+            if (e.type == EventType.MouseUp && e.button == 2)
+            {
+                isPanning = false;
+                e.Use();
+                return;
+            }
+            
+            if (isPanning && (e.type == EventType.MouseDrag || e.type == EventType.MouseMove))
+            {
+                graphOffset += e.delta;
+                e.Use();
+                Repaint();
+                return;
+            }
+            
+            if (!graphViewRect.Contains(e.mousePosition))
+                return;
+            
+            Vector2 mouseInContent = ScreenToGraph(e.mousePosition);
+            
+            // Node selection and dragging
+            if (e.type == EventType.MouseDown && e.button == 0)
+            {
+                DialogueNode clickedNode = null;
+                
+                foreach (var kvp in nodeRects)
+                {
+                    if (kvp.Value.Contains(mouseInContent))
+                    {
+                        clickedNode = kvp.Key;
+                        break;
+                    }
+                }
+                
+                if (clickedNode != null)
+                {
+                    selectedNode = clickedNode;
+                    selectedNodeSO = new SerializedObject(selectedNode);
+                    isDragging = true;
+                    draggedNode = clickedNode;
+                    dragOffset = mouseInContent - nodePositions[clickedNode];
+                    e.Use();
+                }
+                else
+                {
+                    selectedNode = null;
+                    selectedNodeSO = null;
+                }
+                
+                Repaint();
+            }
+            
+            // Dragging
+            if (isDragging && draggedNode != null && e.type == EventType.MouseDrag && e.button == 0)
+            {
+                Vector2 newPos = mouseInContent - dragOffset;
+                
+                // Snap to grid
+                newPos.x = Mathf.Round(newPos.x / GRID_SIZE) * GRID_SIZE;
+                newPos.y = Mathf.Round(newPos.y / GRID_SIZE) * GRID_SIZE;
+                
+                nodePositions[draggedNode] = newPos;
+                e.Use();
+                Repaint();
+            }
+            
+            // End drag and save positions
+            if (e.type == EventType.MouseUp && e.button == 0)
+            {
+                if (isDragging && draggedNode != null)
+                {
+                    SaveNodePositions(); // Save when drag ends
+                }
+                isDragging = false;
+                draggedNode = null;
+            }
+            
+            // Context menu
+            if (e.type == EventType.ContextClick && graphViewRect.Contains(e.mousePosition))
+            {
+                ShowContextMenu(mouseInContent);
+                e.Use();
+            }
+        }
+        
+        private Vector2 ScreenToGraph(Vector2 screenPos)
+        {
+            return (screenPos - graphViewRect.position - graphOffset) / zoomLevel;
+        }
+        
+        private Vector2 GraphToScreen(Vector2 graphPos)
+        {
+            return graphPos * zoomLevel + graphOffset + graphViewRect.position;
+        }
         
         private void DrawToolbar()
         {
-            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            EditorGUI.DrawRect(new Rect(0, 0, position.width, TOOLBAR_HEIGHT), new Color(0.18f, 0.18f, 0.2f));
             
-            if (GUILayout.Button("New Tree", EditorStyles.toolbarButton))
-            {
+            GUILayout.BeginArea(new Rect(0, 0, position.width, TOOLBAR_HEIGHT));
+            GUILayout.BeginHorizontal();
+            
+            GUILayout.Space(8);
+            
+            if (GUILayout.Button("New", EditorStyles.toolbarButton, GUILayout.Width(50)))
                 CreateNewTree();
-            }
             
-            if (GUILayout.Button("Load Tree", EditorStyles.toolbarButton))
-            {
+            if (GUILayout.Button("Load", EditorStyles.toolbarButton, GUILayout.Width(50)))
                 LoadTree();
-            }
             
-            GUILayout.Space(10);
+            GUILayout.Space(15);
             
             EditorGUI.BeginChangeCheck();
-            currentTree = (DialogueTree)EditorGUILayout.ObjectField(currentTree, typeof(DialogueTree), false, GUILayout.Width(200));
-            if (EditorGUI.EndChangeCheck())
+            var newTree = (DialogueTree)EditorGUILayout.ObjectField(currentTree, typeof(DialogueTree), false, GUILayout.Width(200));
+            if (EditorGUI.EndChangeCheck() && newTree != currentTree)
             {
+                // Save current before switching
+                SaveNodePositions();
+                SaveViewState();
+                
+                currentTree = newTree;
                 selectedNode = null;
                 selectedNodeSO = null;
+                
                 if (currentTree != null)
+                {
+                    currentTreeGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(currentTree));
                     currentTreeSO = new SerializedObject(currentTree);
+                    nodePositions.Clear();
+                    LoadNodePositions();
+                    LoadViewState();
+                }
+                else
+                {
+                    currentTreeGUID = null;
+                }
+                
+                InvalidateNodeCache();
                 RefreshNodePositions();
             }
             
-            GUILayout.Space(10);
+            GUILayout.Space(15);
             
             if (currentTree != null)
             {
                 EditorGUI.BeginChangeCheck();
-                showAllNodes = GUILayout.Toggle(showAllNodes, "Show All Nodes", EditorStyles.toolbarButton);
+                showAllNodes = GUILayout.Toggle(showAllNodes, "Show All", EditorStyles.toolbarButton, GUILayout.Width(70));
                 if (EditorGUI.EndChangeCheck())
                 {
+                    InvalidateNodeCache();
                     RefreshNodePositions();
-                    Repaint();
+                }
+                
+                GUILayout.Space(10);
+                
+                // Zoom controls
+                GUILayout.Label($"Zoom: {zoomLevel:P0}", EditorStyles.toolbarButton, GUILayout.Width(80));
+                if (GUILayout.Button("-", EditorStyles.toolbarButton, GUILayout.Width(20)))
+                {
+                    zoomLevel = Mathf.Clamp(zoomLevel - ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                }
+                if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(20)))
+                {
+                    zoomLevel = Mathf.Clamp(zoomLevel + ZOOM_STEP, MIN_ZOOM, MAX_ZOOM);
+                }
+                if (GUILayout.Button("Reset", EditorStyles.toolbarButton, GUILayout.Width(45)))
+                {
+                    zoomLevel = 1f;
+                    graphOffset = Vector2.zero;
+                    SaveViewState();
                 }
             }
             
@@ -122,97 +486,131 @@ namespace WhisperingGate.Editor
             
             if (currentTree != null)
             {
-                if (GUILayout.Button("Preview", EditorStyles.toolbarButton))
+                if (GUILayout.Button("Auto Layout", EditorStyles.toolbarButton, GUILayout.Width(80)))
                 {
-                    PreviewDialogue();
+                    AutoLayoutNodes();
+                    SaveNodePositions();
                 }
                 
-                if (GUILayout.Button("Validate", EditorStyles.toolbarButton))
-                {
+                GUILayout.Space(5);
+                
+                if (GUILayout.Button("Validate", EditorStyles.toolbarButton, GUILayout.Width(60)))
                     ValidateTree();
-                }
+                
+                if (GUILayout.Button("Preview", EditorStyles.toolbarButton, GUILayout.Width(60)))
+                    PreviewDialogue();
             }
             
-            EditorGUILayout.EndHorizontal();
+            GUILayout.Space(8);
+            
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
         }
         
         private void DrawEmptyState()
         {
-            GUILayout.FlexibleSpace();
-            GUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
+            float centerX = position.width / 2;
+            float centerY = position.height / 2;
             
-            GUILayout.BeginVertical();
-            GUILayout.Label("No Dialogue Tree Selected", EditorStyles.centeredGreyMiniLabel);
-            GUILayout.Space(10);
-            if (GUILayout.Button("Create New Tree", GUILayout.Width(150)))
-            {
+            GUIStyle titleStyle = new GUIStyle(EditorStyles.boldLabel);
+            titleStyle.fontSize = 18;
+            titleStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+            titleStyle.alignment = TextAnchor.MiddleCenter;
+            
+            GUIStyle subtitleStyle = new GUIStyle(EditorStyles.label);
+            subtitleStyle.fontSize = 12;
+            subtitleStyle.normal.textColor = new Color(0.4f, 0.4f, 0.4f);
+            subtitleStyle.alignment = TextAnchor.MiddleCenter;
+            
+            GUI.Label(new Rect(centerX - 150, centerY - 60, 300, 30), "No Dialogue Tree Loaded", titleStyle);
+            GUI.Label(new Rect(centerX - 150, centerY - 25, 300, 20), "Create a new tree or load an existing one", subtitleStyle);
+            
+            if (GUI.Button(new Rect(centerX - 70, centerY + 10, 140, 32), "Create New Tree"))
                 CreateNewTree();
-            }
-            GUILayout.EndVertical();
-            
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-            GUILayout.FlexibleSpace();
         }
         
         private void DrawGraphView(Rect rect)
         {
-            GUI.Box(rect, "", EditorStyles.helpBox);
+            // Draw background
+            EditorGUI.DrawRect(rect, BG_COLOR);
             
-            graphScrollPos = GUI.BeginScrollView(rect, graphScrollPos, new Rect(0, 0, 2000, 2000));
+            // Begin GUI group for the graph area (no clipping issues with zoom)
+            GUI.BeginGroup(rect);
             
-            // Draw grid background
-            DrawGrid(rect);
+            // Draw grid first (in screen space)
+            DrawGrid(new Rect(0, 0, rect.width, rect.height));
             
-            // Draw connections first (behind nodes)
-            DrawConnections();
-            
-            // Draw nodes
-            DrawNodes();
-            
-            GUI.EndScrollView();
-            
-            // Handle context menu
-            if (Event.current.type == EventType.ContextClick && rect.Contains(Event.current.mousePosition))
+            // Draw everything in world space (applying zoom and pan manually)
+            if (cachedNodes != null)
             {
-                ShowContextMenu(Event.current.mousePosition);
+                // Draw connections
+                Handles.BeginGUI();
+                foreach (var node in cachedNodes)
+                {
+                    if (node != null && nodePositions.ContainsKey(node))
+                        DrawNodeConnections(node);
+                }
+                Handles.EndGUI();
+                
+                // Draw nodes
+                foreach (var node in cachedNodes)
+                {
+                    if (node != null)
+                        DrawNode(node);
+                }
             }
+            
+            GUI.EndGroup();
         }
         
         private void DrawGrid(Rect rect)
         {
-            float gridSize = 20f;
-            Handles.BeginGUI();
-            Handles.color = new Color(0.5f, 0.5f, 0.5f, 0.2f);
+            float scaledGridSmall = GRID_SIZE * zoomLevel;
+            float scaledGridLarge = GRID_SIZE_LARGE * zoomLevel;
             
-            for (float x = 0; x < rect.width; x += gridSize)
+            // Prevent too small grid lines when zoomed out
+            if (scaledGridSmall < 5f) scaledGridSmall = GRID_SIZE_LARGE * zoomLevel;
+            
+            float offsetX = graphOffset.x % scaledGridSmall;
+            float offsetY = graphOffset.y % scaledGridSmall;
+            float offsetXLarge = graphOffset.x % scaledGridLarge;
+            float offsetYLarge = graphOffset.y % scaledGridLarge;
+            
+            Handles.BeginGUI();
+            
+            // Small grid (skip if too dense)
+            if (scaledGridSmall >= 5f)
             {
+                Handles.color = GRID_COLOR_SMALL;
+                int numLinesX = Mathf.CeilToInt(rect.width / scaledGridSmall) + 2;
+                int numLinesY = Mathf.CeilToInt(rect.height / scaledGridSmall) + 2;
+                
+                for (int i = -1; i < numLinesX; i++)
+                {
+                    float x = offsetX + i * scaledGridSmall;
+                    Handles.DrawLine(new Vector3(x, 0), new Vector3(x, rect.height));
+                }
+                for (int i = -1; i < numLinesY; i++)
+                {
+                    float y = offsetY + i * scaledGridSmall;
+                    Handles.DrawLine(new Vector3(0, y), new Vector3(rect.width, y));
+                }
+            }
+            
+            // Large grid
+            Handles.color = GRID_COLOR_LARGE;
+            int numLinesXLarge = Mathf.CeilToInt(rect.width / scaledGridLarge) + 2;
+            int numLinesYLarge = Mathf.CeilToInt(rect.height / scaledGridLarge) + 2;
+            
+            for (int i = -1; i < numLinesXLarge; i++)
+            {
+                float x = offsetXLarge + i * scaledGridLarge;
                 Handles.DrawLine(new Vector3(x, 0), new Vector3(x, rect.height));
             }
-            
-            for (float y = 0; y < rect.height; y += gridSize)
+            for (int i = -1; i < numLinesYLarge; i++)
             {
+                float y = offsetYLarge + i * scaledGridLarge;
                 Handles.DrawLine(new Vector3(0, y), new Vector3(rect.width, y));
-            }
-            
-            Handles.EndGUI();
-        }
-        
-        private void DrawConnections()
-        {
-            if (currentTree == null || currentTree.StartNode == null) return;
-            
-            Handles.BeginGUI();
-            
-            // Draw connections from start node
-            DrawNodeConnections(currentTree.StartNode);
-            
-            // Draw connections from all nodes
-            var allNodes = GetAllNodes();
-            foreach (var node in allNodes)
-            {
-                DrawNodeConnections(node);
             }
             
             Handles.EndGUI();
@@ -220,146 +618,187 @@ namespace WhisperingGate.Editor
         
         private void DrawNodeConnections(DialogueNode node)
         {
-            if (node == null) return;
+            if (!nodePositions.ContainsKey(node)) return;
             
-            Vector2 nodePos = GetNodePosition(node);
-            Vector2 nodeCenter = nodePos + new Vector2(NODE_WIDTH / 2, NODE_HEIGHT / 2);
+            Vector2 nodeScreenPos = nodePositions[node] * zoomLevel + graphOffset;
+            float scaledWidth = NODE_WIDTH * zoomLevel;
+            float scaledHeight = NODE_HEIGHT * zoomLevel;
             
-            // Draw connection to auto-advance node
-            if (node.NextNodeIfAuto != null)
+            Vector2 startPoint = nodeScreenPos + new Vector2(scaledWidth, scaledHeight / 2);
+            
+            // Auto-advance connection
+            if (node.NextNodeIfAuto != null && nodePositions.ContainsKey(node.NextNodeIfAuto))
             {
-                Vector2 targetPos = GetNodePosition(node.NextNodeIfAuto);
-                Vector2 targetCenter = targetPos + new Vector2(NODE_WIDTH / 2, NODE_HEIGHT / 2);
-                DrawConnection(nodeCenter, targetCenter, Color.cyan, true);
+                Vector2 targetScreenPos = nodePositions[node.NextNodeIfAuto] * zoomLevel + graphOffset;
+                Vector2 endPoint = targetScreenPos + new Vector2(0, scaledHeight / 2);
+                DrawBezierConnection(startPoint, endPoint, CONNECTION_AUTO, 3f * zoomLevel);
             }
             
-            // Draw connections from choices
+            // Choice connections
+            int choiceIndex = 0;
             foreach (var choice in node.Choices)
             {
-                if (choice.NextNode != null)
+                if (choice.NextNode != null && nodePositions.ContainsKey(choice.NextNode))
                 {
-                    Vector2 targetPos = GetNodePosition(choice.NextNode);
-                    Vector2 targetCenter = targetPos + new Vector2(NODE_WIDTH / 2, NODE_HEIGHT / 2);
-                    Color lineColor = choice.HasCondition ? Color.yellow : Color.white;
-                    DrawConnection(nodeCenter, targetCenter, lineColor, false);
+                    Vector2 targetScreenPos = nodePositions[choice.NextNode] * zoomLevel + graphOffset;
+                    Vector2 choiceStart = nodeScreenPos + new Vector2(scaledWidth, (30 + choiceIndex * 15) * zoomLevel);
+                    Vector2 endPoint = targetScreenPos + new Vector2(0, scaledHeight / 2);
+                    
+                    Color lineColor = choice.HasCondition ? CONNECTION_CONDITION : CONNECTION_COLOR;
+                    DrawBezierConnection(choiceStart, endPoint, lineColor, 2f * zoomLevel);
                 }
+                choiceIndex++;
             }
         }
         
-        private void DrawConnection(Vector2 from, Vector2 to, Color color, bool isDashed)
+        private void DrawBezierConnection(Vector2 start, Vector2 end, Color color, float width)
         {
+            float distance = Vector2.Distance(start, end);
+            float tangentOffset = Mathf.Clamp(distance * 0.4f, 30f * zoomLevel, 150f * zoomLevel);
+            
+            Vector3 startPos = new Vector3(start.x, start.y, 0);
+            Vector3 endPos = new Vector3(end.x, end.y, 0);
+            Vector3 startTan = startPos + Vector3.right * tangentOffset;
+            Vector3 endTan = endPos + Vector3.left * tangentOffset;
+            
+            Handles.DrawBezier(startPos, endPos, startTan, endTan, color, null, Mathf.Max(1f, width));
+            
+            // Arrow
+            Vector2 direction = (end - start).normalized;
+            float arrowSize = Mathf.Max(6f, 10f * zoomLevel);
+            Vector2 arrowBase = end - direction * arrowSize;
+            Vector2 perpendicular = new Vector2(-direction.y, direction.x) * arrowSize * 0.5f;
+            
             Handles.color = color;
-            if (isDashed)
-            {
-                Handles.DrawDottedLine(from, to, 5f);
-            }
-            else
-            {
-                Handles.DrawLine(from, to);
-            }
-            
-            // Draw arrow
-            Vector2 direction = (to - from).normalized;
-            Vector2 arrowBase = to - direction * 20f;
-            Vector2 arrowRight = arrowBase + new Vector2(-direction.y, direction.x) * 5f;
-            Vector2 arrowLeft = arrowBase - new Vector2(-direction.y, direction.x) * 5f;
-            
-            Handles.DrawLine(to, arrowRight);
-            Handles.DrawLine(to, arrowLeft);
+            Handles.DrawAAConvexPolygon(end, arrowBase + perpendicular, arrowBase - perpendicular);
         }
         
-        private void DrawNodes()
+        private void DrawNode(DialogueNode node)
         {
-            if (currentTree == null) return;
-            
-            List<DialogueNode> nodesToShow;
-            
-            if (showAllNodes)
+            if (!nodePositions.ContainsKey(node))
             {
-                // Show all nodes in project (for easier node management)
-                nodesToShow = GetAllNodesInProject();
-            }
-            else
-            {
-                // Show only connected nodes (default behavior)
-                nodesToShow = GetAllNodes();
+                nodePositions[node] = new Vector2(Random.Range(100, 600), Random.Range(100, 400));
             }
             
-            // Mark which nodes are actually connected
-            var connectedNodes = new HashSet<DialogueNode>(GetAllNodes());
+            Vector2 screenPos = nodePositions[node] * zoomLevel + graphOffset;
+            float scaledWidth = NODE_WIDTH * zoomLevel;
+            float scaledHeight = NODE_HEIGHT * zoomLevel;
             
-            foreach (var node in nodesToShow)
+            Rect nodeRect = new Rect(screenPos.x, screenPos.y, scaledWidth, scaledHeight);
+            
+            // Store in graph space for hit testing
+            nodeRects[node] = new Rect(nodePositions[node].x, nodePositions[node].y, NODE_WIDTH, NODE_HEIGHT);
+            
+            // Skip if completely outside view
+            Rect viewRect = new Rect(0, 0, graphViewRect.width, graphViewRect.height);
+            if (!nodeRect.Overlaps(viewRect)) return;
+            
+            // Determine colors
+            Color headerColor = NODE_BORDER;
+            bool isSelected = selectedNode == node;
+            bool isUnlinked = cachedConnectedNodes != null && !cachedConnectedNodes.Contains(node) && showAllNodes;
+            
+            if (node == currentTree.StartNode)
+                headerColor = NODE_START;
+            else if (node.IsEndNode)
+                headerColor = NODE_END;
+            else if (isSelected)
+                headerColor = NODE_SELECTED;
+            else if (isUnlinked)
+                headerColor = new Color(0.4f, 0.4f, 0.4f, 0.5f);
+            
+            // Shadow
+            EditorGUI.DrawRect(new Rect(nodeRect.x + 3 * zoomLevel, nodeRect.y + 3 * zoomLevel, scaledWidth, scaledHeight), 
+                new Color(0, 0, 0, 0.3f));
+            
+            // Background
+            EditorGUI.DrawRect(nodeRect, NODE_BG);
+            
+            // Header
+            float headerHeight = 28 * zoomLevel;
+            EditorGUI.DrawRect(new Rect(nodeRect.x, nodeRect.y, scaledWidth, headerHeight), headerColor);
+            
+            // Border
+            float borderWidth = isSelected ? 2 : 1;
+            Color borderColor = isSelected ? NODE_SELECTED : new Color(0.3f, 0.3f, 0.33f);
+            DrawRectBorder(nodeRect, borderColor, borderWidth);
+            
+            // Only draw text if zoom is sufficient
+            if (zoomLevel >= 0.4f)
             {
-                if (!nodePositions.ContainsKey(node))
+                // Title
+                string nodeId = string.IsNullOrEmpty(node.NodeId) ? "Unnamed" : node.NodeId;
+                float padding = 10 * zoomLevel;
+                
+                GUIStyle scaledTitle = new GUIStyle(nodeTitleStyle);
+                scaledTitle.fontSize = Mathf.RoundToInt(12 * zoomLevel);
+                
+                GUI.Label(new Rect(nodeRect.x + padding, nodeRect.y + 5 * zoomLevel, scaledWidth - padding * 2, 20 * zoomLevel), 
+                    nodeId, scaledTitle);
+                
+                // Subtitle
+                if (zoomLevel >= 0.5f)
                 {
-                    nodePositions[node] = new Vector2(UnityEngine.Random.Range(100, 500), UnityEngine.Random.Range(100, 400));
+                    string speakerName = node.Speaker != null ? node.Speaker.DisplayName : "No Speaker";
+                    string preview = speakerName;
+                    
+                    if (!string.IsNullOrEmpty(node.LineText))
+                    {
+                        int maxChars = Mathf.RoundToInt(28 / zoomLevel);
+                        string linePreview = node.LineText.Length > maxChars ? 
+                            node.LineText.Substring(0, maxChars) + "..." : node.LineText;
+                        preview += "\n" + linePreview;
+                    }
+                    
+                    if (isUnlinked) preview += "\n[Unlinked]";
+                    
+                    GUIStyle scaledSubtitle = new GUIStyle(nodeSubtitleStyle);
+                    scaledSubtitle.fontSize = Mathf.RoundToInt(10 * zoomLevel);
+                    
+                    GUI.Label(new Rect(nodeRect.x + padding, nodeRect.y + headerHeight + 2 * zoomLevel, 
+                        scaledWidth - padding * 2, scaledHeight - headerHeight - 5 * zoomLevel), 
+                        preview, scaledSubtitle);
                 }
-                
-                Vector2 pos = nodePositions[node];
-                Rect nodeRect = new Rect(pos.x, pos.y, NODE_WIDTH, NODE_HEIGHT);
-                nodeRects[node] = nodeRect;
-                
-                // Determine node color
-                Color bgColor = Color.gray;
-                if (node == currentTree.StartNode)
-                    bgColor = Color.green;
-                else if (node.IsEndNode)
-                    bgColor = Color.red;
-                else if (selectedNode == node)
-                    bgColor = Color.yellow;
-                else if (!connectedNodes.Contains(node) && showAllNodes)
-                    bgColor = new Color(0.5f, 0.5f, 0.5f, 0.7f); // Grayed out for unconnected nodes
-                
-                // Draw node
-                GUI.backgroundColor = bgColor;
-                GUI.Box(nodeRect, "", EditorStyles.helpBox);
-                GUI.backgroundColor = Color.white;
-                
-                // Draw node content
-                GUIStyle labelStyle = new GUIStyle(EditorStyles.label);
-                labelStyle.wordWrap = true;
-                labelStyle.alignment = TextAnchor.MiddleCenter;
-                
-                string nodeText = string.IsNullOrEmpty(node.NodeId) ? "Node" : node.NodeId;
-                if (node.Speaker != null)
-                    nodeText += $"\n({node.Speaker.DisplayName})";
-                
-                // Add indicator for unconnected nodes
-                if (!connectedNodes.Contains(node) && showAllNodes)
-                    nodeText += "\n[Unlinked]";
-                
-                GUI.Label(new Rect(nodeRect.x + 5, nodeRect.y + 5, nodeRect.width - 10, nodeRect.height - 10), 
-                    nodeText, labelStyle);
             }
+            
+            // Connection points
+            float pointSize = 5 * zoomLevel;
+            EditorGUI.DrawRect(new Rect(nodeRect.x - pointSize, nodeRect.y + scaledHeight / 2 - pointSize, pointSize * 2, pointSize * 2), 
+                new Color(0.8f, 0.6f, 0.6f));
+            EditorGUI.DrawRect(new Rect(nodeRect.xMax - pointSize, nodeRect.y + scaledHeight / 2 - pointSize, pointSize * 2, pointSize * 2), 
+                new Color(0.6f, 0.8f, 0.6f));
+        }
+        
+        private void DrawRectBorder(Rect rect, Color color, float thickness)
+        {
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, thickness), color);
+            EditorGUI.DrawRect(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, thickness, rect.height), color);
+            EditorGUI.DrawRect(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
         }
         
         private void DrawInspectorPanel(Rect rect)
         {
-            GUI.Box(rect, "", EditorStyles.helpBox);
+            EditorGUI.DrawRect(rect, PANEL_BG);
             
-            // Calculate content height dynamically
-            float contentHeight = selectedNode != null ? 1500f : 400f;
+            float contentHeight = selectedNode != null ? 1800f : 500f;
+            float contentWidth = rect.width - 30;
             
             inspectorScrollPos = GUI.BeginScrollView(
                 new Rect(rect.x, rect.y, rect.width, rect.height), 
                 inspectorScrollPos, 
-                new Rect(0, 0, rect.width - 20, contentHeight),
-                false, 
-                true
+                new Rect(0, 0, contentWidth, contentHeight)
             );
             
-            GUILayout.BeginArea(new Rect(0, 0, rect.width - 20, contentHeight));
+            GUILayout.BeginArea(new Rect(12, 12, contentWidth - 10, contentHeight - 20));
             
             if (selectedNode != null)
-            {
                 DrawNodeInspector();
-            }
             else
-            {
                 DrawTreeInspector();
-            }
             
             GUILayout.EndArea();
+            
             GUI.EndScrollView();
         }
         
@@ -372,30 +811,28 @@ namespace WhisperingGate.Editor
             
             selectedNodeSO.Update();
             
-            EditorGUILayout.LabelField("Node Properties", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Node Properties", panelHeaderStyle);
+            DrawHorizontalLine();
+            EditorGUILayout.Space(3);
             
-            // Node ID
             EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("nodeId"), new GUIContent("Node ID"));
-            
-            // Speaker
             EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("speaker"), new GUIContent("Speaker"));
             
-            // Line Text
+            EditorGUILayout.Space(5);
+            EditorGUILayout.LabelField("Dialogue Text", EditorStyles.boldLabel);
             SerializedProperty lineTextProp = selectedNodeSO.FindProperty("lineText");
-            EditorGUILayout.LabelField("Line Text");
             lineTextProp.stringValue = EditorGUILayout.TextArea(lineTextProp.stringValue, GUILayout.Height(60));
+            EditorGUILayout.Space(8);
             
-            // Voice Clip
+            EditorGUILayout.LabelField("Audio Settings", panelHeaderStyle);
+            DrawHorizontalLine();
             EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("voiceClip"), new GUIContent("Voice Clip"));
+            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("voiceDelay"), new GUIContent("Delay"));
+            EditorGUILayout.Space(8);
             
-            // Voice Delay
-            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("voiceDelay"), new GUIContent("Voice Delay"));
+            EditorGUILayout.LabelField("Choices", panelHeaderStyle);
+            DrawHorizontalLine();
             
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Choices", EditorStyles.boldLabel);
-            
-            // Draw choices using SerializedProperty
             SerializedProperty choicesProp = selectedNodeSO.FindProperty("choices");
             if (choicesProp != null)
             {
@@ -404,90 +841,88 @@ namespace WhisperingGate.Editor
                     EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     SerializedProperty choiceProp = choicesProp.GetArrayElementAtIndex(i);
                     
-                    EditorGUILayout.LabelField($"Choice {i + 1}", EditorStyles.boldLabel);
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField($"Choice {i + 1}", EditorStyles.boldLabel, GUILayout.Width(70));
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("×", GUILayout.Width(22), GUILayout.Height(18)))
+                    {
+                        choicesProp.DeleteArrayElementAtIndex(i);
+                        break;
+                    }
+                    EditorGUILayout.EndHorizontal();
+                    
                     EditorGUILayout.PropertyField(choiceProp.FindPropertyRelative("choiceText"), new GUIContent("Text"));
                     EditorGUILayout.PropertyField(choiceProp.FindPropertyRelative("nextNode"), new GUIContent("Next Node"));
-                    EditorGUILayout.PropertyField(choiceProp.FindPropertyRelative("hasCondition"), new GUIContent("Has Condition"));
+                    EditorGUILayout.PropertyField(choiceProp.FindPropertyRelative("hasCondition"), new GUIContent("Conditional"));
                     
                     if (choiceProp.FindPropertyRelative("hasCondition").boolValue)
                     {
+                        EditorGUI.indentLevel++;
                         EditorGUILayout.PropertyField(choiceProp.FindPropertyRelative("showCondition"), new GUIContent("Condition"));
+                        EditorGUI.indentLevel--;
                     }
                     
-                    // Impacts
                     SerializedProperty impactsProp = choiceProp.FindPropertyRelative("impacts");
-                    if (impactsProp != null)
+                    if (impactsProp != null && impactsProp.arraySize > 0)
                     {
                         EditorGUILayout.LabelField("Impacts", EditorStyles.miniLabel);
                         for (int j = 0; j < impactsProp.arraySize; j++)
                         {
                             EditorGUILayout.BeginHorizontal();
                             SerializedProperty impactProp = impactsProp.GetArrayElementAtIndex(j);
-                            EditorGUILayout.PropertyField(impactProp.FindPropertyRelative("variableName"), GUIContent.none);
-                            EditorGUILayout.PropertyField(impactProp.FindPropertyRelative("valueChange"), GUIContent.none);
-                            if (GUILayout.Button("X", GUILayout.Width(20)))
+                            EditorGUILayout.PropertyField(impactProp.FindPropertyRelative("variableName"), GUIContent.none, GUILayout.Width(120));
+                            EditorGUILayout.PropertyField(impactProp.FindPropertyRelative("valueChange"), GUIContent.none, GUILayout.Width(50));
+                            if (GUILayout.Button("×", GUILayout.Width(22)))
                             {
                                 impactsProp.DeleteArrayElementAtIndex(j);
                                 break;
                             }
                             EditorGUILayout.EndHorizontal();
                         }
-                        if (GUILayout.Button("Add Impact", EditorStyles.miniButton))
-                        {
-                            impactsProp.arraySize++;
-                        }
                     }
-                    
-                    // Remove choice button
-                    if (GUILayout.Button("Remove Choice", EditorStyles.miniButton))
+                    if (GUILayout.Button("+ Impact", EditorStyles.miniButton, GUILayout.Width(70)))
                     {
-                        choicesProp.DeleteArrayElementAtIndex(i);
-                        break;
+                        impactsProp.arraySize++;
                     }
                     
                     EditorGUILayout.EndVertical();
+                    EditorGUILayout.Space(2);
                 }
                 
-                if (GUILayout.Button("Add Choice"))
+                if (GUILayout.Button("+ Add Choice", GUILayout.Height(24)))
                 {
                     choicesProp.arraySize++;
                 }
             }
             
-            EditorGUILayout.Space();
+            EditorGUILayout.Space(8);
             
-            // Next Node If Auto
-            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("nextNodeIfAuto"), new GUIContent("Next Node (Auto)"));
+            EditorGUILayout.LabelField("Flow Control", panelHeaderStyle);
+            DrawHorizontalLine();
+            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("nextNodeIfAuto"), new GUIContent("Auto-Advance"));
+            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("isEndNode"), new GUIContent("End Node"));
+            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("displayDuration"), new GUIContent("Duration"));
+            EditorGUILayout.Space(8);
             
-            // Commands
+            EditorGUILayout.LabelField("Commands", panelHeaderStyle);
+            DrawHorizontalLine();
+            
             SerializedProperty startCommandsProp = selectedNodeSO.FindProperty("startCommands");
             if (startCommandsProp != null)
-            {
-                EditorGUILayout.LabelField("Start Commands", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(startCommandsProp, true);
-            }
+                EditorGUILayout.PropertyField(startCommandsProp, new GUIContent("On Start"), true);
             
             SerializedProperty endCommandsProp = selectedNodeSO.FindProperty("endCommands");
             if (endCommandsProp != null)
-            {
-                EditorGUILayout.LabelField("End Commands", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(endCommandsProp, true);
-            }
-            
-            // Is End Node
-            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("isEndNode"), new GUIContent("Is End Node"));
-            
-            // Display Duration
-            EditorGUILayout.PropertyField(selectedNodeSO.FindProperty("displayDuration"), new GUIContent("Display Duration"));
+                EditorGUILayout.PropertyField(endCommandsProp, new GUIContent("On End"), true);
             
             selectedNodeSO.ApplyModifiedProperties();
             
-            // Delete node button
-            EditorGUILayout.Space();
-            GUI.backgroundColor = Color.red;
-            if (GUILayout.Button("Delete Node"))
+            EditorGUILayout.Space(12);
+            
+            GUI.backgroundColor = new Color(0.9f, 0.3f, 0.3f);
+            if (GUILayout.Button("Delete Node", GUILayout.Height(26)))
             {
-                if (EditorUtility.DisplayDialog("Delete Node", $"Delete node '{selectedNode.NodeId}'?", "Yes", "No"))
+                if (EditorUtility.DisplayDialog("Delete Node", $"Delete node '{selectedNode.NodeId}'?", "Delete", "Cancel"))
                 {
                     DeleteNode(selectedNode);
                 }
@@ -504,99 +939,84 @@ namespace WhisperingGate.Editor
             
             currentTreeSO.Update();
             
-            EditorGUILayout.LabelField("Tree Properties", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Tree Properties", panelHeaderStyle);
+            DrawHorizontalLine();
+            EditorGUILayout.Space(3);
             
             EditorGUILayout.PropertyField(currentTreeSO.FindProperty("treeId"), new GUIContent("Tree ID"));
-            EditorGUILayout.PropertyField(currentTreeSO.FindProperty("treeTitle"), new GUIContent("Tree Title"));
+            EditorGUILayout.PropertyField(currentTreeSO.FindProperty("treeTitle"), new GUIContent("Title"));
             EditorGUILayout.PropertyField(currentTreeSO.FindProperty("startNode"), new GUIContent("Start Node"));
             EditorGUILayout.PropertyField(currentTreeSO.FindProperty("defaultTypewriterSpeed"), new GUIContent("Typewriter Speed"));
-            EditorGUILayout.PropertyField(currentTreeSO.FindProperty("autoAdvanceIfSingleChoice"), new GUIContent("Auto Advance Single Choice"));
+            EditorGUILayout.PropertyField(currentTreeSO.FindProperty("autoAdvanceIfSingleChoice"), new GUIContent("Auto Single Choice"));
             
             currentTreeSO.ApplyModifiedProperties();
             
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Statistics", EditorStyles.boldLabel);
-            var allNodes = GetAllNodes();
-            EditorGUILayout.LabelField($"Total Nodes: {allNodes.Count}");
-            EditorGUILayout.LabelField($"End Nodes: {allNodes.Count(n => n.IsEndNode)}");
+            EditorGUILayout.Space(12);
+            
+            EditorGUILayout.LabelField("Statistics", panelHeaderStyle);
+            DrawHorizontalLine();
+            
+            if (cachedNodes != null)
+            {
+                EditorGUILayout.LabelField($"Connected Nodes: {cachedNodes.Count}");
+                EditorGUILayout.LabelField($"End Nodes: {cachedNodes.Count(n => n != null && n.IsEndNode)}");
+            }
             EditorGUILayout.LabelField($"Start Node: {(currentTree.StartNode != null ? currentTree.StartNode.NodeId : "None")}");
+            
+            EditorGUILayout.Space(8);
+            EditorGUILayout.HelpBox("Node positions are saved automatically.\nScroll to zoom, middle-drag to pan.", MessageType.Info);
+        }
+        
+        private void DrawHorizontalLine()
+        {
+            EditorGUILayout.Space(2);
+            Rect lineRect = EditorGUILayout.GetControlRect(false, 1);
+            EditorGUI.DrawRect(lineRect, new Color(0.35f, 0.35f, 0.4f));
+            EditorGUILayout.Space(3);
         }
         
         private void DrawStatusBar(Rect rect)
         {
-            GUI.Box(rect, "", EditorStyles.toolbar);
-            GUILayout.BeginArea(rect);
+            EditorGUI.DrawRect(rect, new Color(0.14f, 0.14f, 0.16f));
+            EditorGUI.DrawRect(new Rect(rect.x, rect.y, rect.width, 1), new Color(0, 0, 0, 0.3f));
+            
+            GUILayout.BeginArea(new Rect(rect.x + 10, rect.y + 4, rect.width - 20, rect.height - 8));
             GUILayout.BeginHorizontal();
             
-            if (currentTree != null)
+            if (currentTree != null && cachedNodes != null)
             {
-                var allNodes = GetAllNodes();
-                GUILayout.Label($"Nodes: {allNodes.Count} | Selected: {(selectedNode != null ? selectedNode.NodeId : "None")}", EditorStyles.miniLabel);
+                GUILayout.Label($"Nodes: {cachedNodes.Count}", statusLabelStyle);
+                GUILayout.Space(15);
+                GUILayout.Label($"Selected: {(selectedNode != null ? selectedNode.NodeId : "None")}", statusLabelStyle);
             }
             else
             {
-                GUILayout.Label("No tree loaded", EditorStyles.miniLabel);
+                GUILayout.Label("No tree loaded", statusLabelStyle);
             }
             
             GUILayout.FlexibleSpace();
             
-            if (currentTree != null && Application.isPlaying)
+            GUILayout.Label($"Zoom: {zoomLevel:P0}", statusLabelStyle);
+            
+            GUILayout.Space(15);
+            
+            if (Application.isPlaying)
             {
-                GUI.color = Color.green;
-                GUILayout.Label("● Play Mode", EditorStyles.miniLabel);
-                GUI.color = Color.white;
+                GUIStyle playModeStyle = new GUIStyle(statusLabelStyle);
+                playModeStyle.normal.textColor = new Color(0.4f, 0.9f, 0.4f);
+                GUILayout.Label("● PLAY", playModeStyle);
             }
             
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
         
-        private void HandleEvents()
-        {
-            Event e = Event.current;
-            
-            // Handle node selection
-            if (e.type == EventType.MouseDown && e.button == 0)
-            {
-                selectedNode = null;
-                foreach (var kvp in nodeRects)
-                {
-                    if (kvp.Value.Contains(e.mousePosition - graphScrollPos))
-                    {
-                        selectedNode = kvp.Key;
-                        selectedNodeSO = new SerializedObject(selectedNode);
-                        isDragging = true;
-                        draggedNode = kvp.Key;
-                        dragOffset = e.mousePosition - nodePositions[kvp.Key];
-                        e.Use();
-                        break;
-                    }
-                }
-                Repaint();
-            }
-            
-            // Handle node dragging
-            if (isDragging && draggedNode != null && e.type == EventType.MouseDrag)
-            {
-                nodePositions[draggedNode] = e.mousePosition - dragOffset - graphScrollPos;
-                e.Use();
-                Repaint();
-            }
-            
-            if (e.type == EventType.MouseUp)
-            {
-                isDragging = false;
-                draggedNode = null;
-            }
-        }
-        
         private void ShowContextMenu(Vector2 position)
         {
             GenericMenu menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Create Node"), false, () => CreateNodeAtPosition(position + graphScrollPos));
+            menu.AddItem(new GUIContent("Create Node"), false, () => CreateNodeAtPosition(position));
             menu.AddItem(new GUIContent("Create Start Node"), false, () => {
-                CreateNodeAtPosition(position + graphScrollPos);
+                CreateNodeAtPosition(position);
                 if (currentTree != null && currentTree.StartNode == null && selectedNode != null)
                 {
                     if (currentTreeSO == null)
@@ -607,6 +1027,9 @@ namespace WhisperingGate.Editor
                     EditorUtility.SetDirty(currentTree);
                 }
             });
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Auto Layout"), false, () => { AutoLayoutNodes(); SaveNodePositions(); });
+            menu.AddItem(new GUIContent("Reset View"), false, () => { zoomLevel = 1f; graphOffset = Vector2.zero; SaveViewState(); });
             menu.ShowAsContext();
         }
         
@@ -617,32 +1040,22 @@ namespace WhisperingGate.Editor
             DialogueNode newNode = CreateInstance<DialogueNode>();
             newNode.name = "NewNode";
             
-            // Auto-generate path if in a dialogue folder
-            string defaultPath = "Assets/Dialogue/Nodes/NewNode.asset";
             string folderPath = "Assets/Dialogue/Nodes";
             
+            if (!AssetDatabase.IsValidFolder("Assets/Dialogue"))
+                AssetDatabase.CreateFolder("Assets", "Dialogue");
             if (!AssetDatabase.IsValidFolder(folderPath))
-            {
-                string assetsFolder = "Assets";
-                if (!AssetDatabase.IsValidFolder("Assets/Dialogue"))
-                {
-                    AssetDatabase.CreateFolder(assetsFolder, "Dialogue");
-                }
-                if (!AssetDatabase.IsValidFolder(folderPath))
-                {
-                    AssetDatabase.CreateFolder("Assets/Dialogue", "Nodes");
-                }
-            }
+                AssetDatabase.CreateFolder("Assets/Dialogue", "Nodes");
             
-            // Find unique name
-            string uniquePath = AssetDatabase.GenerateUniqueAssetPath(defaultPath);
+            string uniquePath = AssetDatabase.GenerateUniqueAssetPath(folderPath + "/NewNode.asset");
             AssetDatabase.CreateAsset(newNode, uniquePath);
             AssetDatabase.SaveAssets();
             
-            // Store position relative to scroll view
+            position.x = Mathf.Round(position.x / GRID_SIZE) * GRID_SIZE;
+            position.y = Mathf.Round(position.y / GRID_SIZE) * GRID_SIZE;
+            
             nodePositions[newNode] = position;
             
-            // If no start node, set this as start
             if (currentTree.StartNode == null)
             {
                 Undo.RecordObject(currentTree, "Set Start Node");
@@ -656,11 +1069,87 @@ namespace WhisperingGate.Editor
             
             selectedNode = newNode;
             selectedNodeSO = new SerializedObject(newNode);
+            InvalidateNodeCache();
+            SaveNodePositions();
+            Repaint();
+        }
+        
+        private void AutoLayoutNodes()
+        {
+            if (currentTree == null || currentTree.StartNode == null) return;
+            
+            var allNodes = GetAllNodes();
+            var visited = new HashSet<DialogueNode>();
+            var levels = new Dictionary<DialogueNode, int>();
+            
+            var queue = new Queue<DialogueNode>();
+            queue.Enqueue(currentTree.StartNode);
+            levels[currentTree.StartNode] = 0;
+            
+            while (queue.Count > 0)
+            {
+                var node = queue.Dequeue();
+                if (visited.Contains(node)) continue;
+                visited.Add(node);
+                
+                int currentLevel = levels[node];
+                
+                if (node.NextNodeIfAuto != null && !visited.Contains(node.NextNodeIfAuto))
+                {
+                    levels[node.NextNodeIfAuto] = currentLevel + 1;
+                    queue.Enqueue(node.NextNodeIfAuto);
+                }
+                
+                foreach (var choice in node.Choices)
+                {
+                    if (choice.NextNode != null && !visited.Contains(choice.NextNode))
+                    {
+                        levels[choice.NextNode] = currentLevel + 1;
+                        queue.Enqueue(choice.NextNode);
+                    }
+                }
+            }
+            
+            var nodesPerLevel = new Dictionary<int, List<DialogueNode>>();
+            foreach (var kvp in levels)
+            {
+                if (!nodesPerLevel.ContainsKey(kvp.Value))
+                    nodesPerLevel[kvp.Value] = new List<DialogueNode>();
+                nodesPerLevel[kvp.Value].Add(kvp.Key);
+            }
+            
+            float xSpacing = NODE_WIDTH + 80f;
+            float ySpacing = NODE_HEIGHT + 60f;
+            
+            foreach (var kvp in nodesPerLevel)
+            {
+                int level = kvp.Key;
+                var nodes = kvp.Value;
+                float startY = (nodes.Count - 1) * ySpacing / 2f;
+                
+                for (int i = 0; i < nodes.Count; i++)
+                {
+                    float x = 100f + level * xSpacing;
+                    float y = 300f + i * ySpacing - startY;
+                    nodePositions[nodes[i]] = new Vector2(x, y);
+                }
+            }
+            
+            // Center on start node
+            if (nodePositions.ContainsKey(currentTree.StartNode))
+            {
+                graphOffset = -nodePositions[currentTree.StartNode] * zoomLevel + 
+                    new Vector2(graphViewRect.width / 2 - NODE_WIDTH * zoomLevel / 2, graphViewRect.height / 2 - NODE_HEIGHT * zoomLevel / 2);
+            }
+            
             Repaint();
         }
         
         private void CreateNewTree()
         {
+            SaveNodePositions();
+            SaveViewState();
+            
             DialogueTree newTree = CreateInstance<DialogueTree>();
             newTree.name = "NewDialogueTree";
             
@@ -670,7 +1159,14 @@ namespace WhisperingGate.Editor
                 AssetDatabase.CreateAsset(newTree, path);
                 AssetDatabase.SaveAssets();
                 currentTree = newTree;
+                currentTreeGUID = AssetDatabase.AssetPathToGUID(path);
+                currentTreeSO = new SerializedObject(currentTree);
                 selectedNode = null;
+                nodePositions.Clear();
+                nodeRects.Clear();
+                zoomLevel = 1f;
+                graphOffset = Vector2.zero;
+                InvalidateNodeCache();
                 RefreshNodePositions();
                 Repaint();
             }
@@ -678,14 +1174,27 @@ namespace WhisperingGate.Editor
         
         private void LoadTree()
         {
+            SaveNodePositions();
+            SaveViewState();
+            
             string path = EditorUtility.OpenFilePanel("Load Dialogue Tree", "Assets", "asset");
             if (!string.IsNullOrEmpty(path))
             {
                 path = "Assets" + path.Substring(Application.dataPath.Length);
                 currentTree = AssetDatabase.LoadAssetAtPath<DialogueTree>(path);
-                selectedNode = null;
-                RefreshNodePositions();
-                Repaint();
+                if (currentTree != null)
+                {
+                    currentTreeGUID = AssetDatabase.AssetPathToGUID(path);
+                    currentTreeSO = new SerializedObject(currentTree);
+                    selectedNode = null;
+                    nodePositions.Clear();
+                    nodeRects.Clear();
+                    LoadNodePositions();
+                    LoadViewState();
+                    InvalidateNodeCache();
+                    RefreshNodePositions();
+                    Repaint();
+                }
             }
         }
         
@@ -693,7 +1202,6 @@ namespace WhisperingGate.Editor
         {
             if (node == null) return;
             
-            // Remove from tree if it's the start node
             if (currentTree.StartNode == node)
             {
                 Undo.RecordObject(currentTree, "Clear Start Node");
@@ -702,7 +1210,6 @@ namespace WhisperingGate.Editor
                 EditorUtility.SetDirty(currentTree);
             }
             
-            // Remove references from other nodes
             var allNodes = GetAllNodes();
             foreach (var n in allNodes)
             {
@@ -710,7 +1217,6 @@ namespace WhisperingGate.Editor
                 
                 bool changed = false;
                 
-                // Check auto-advance
                 if (n.NextNodeIfAuto == node)
                 {
                     Undo.RecordObject(n, "Clear Auto-Advance");
@@ -719,7 +1225,6 @@ namespace WhisperingGate.Editor
                     changed = true;
                 }
                 
-                // Check choices
                 foreach (var choice in n.Choices)
                 {
                     if (choice.NextNode == node)
@@ -739,11 +1244,12 @@ namespace WhisperingGate.Editor
             nodeRects.Remove(node);
             selectedNode = null;
             
-            // Delete asset
             string assetPath = AssetDatabase.GetAssetPath(node);
             AssetDatabase.DeleteAsset(assetPath);
             AssetDatabase.SaveAssets();
             
+            InvalidateNodeCache();
+            SaveNodePositions();
             Repaint();
         }
         
@@ -751,18 +1257,14 @@ namespace WhisperingGate.Editor
         {
             if (currentTree == null || !Application.isPlaying)
             {
-                EditorUtility.DisplayDialog("Preview", "Please enter Play Mode first, then click Preview.", "OK");
+                EditorUtility.DisplayDialog("Preview", "Enter Play Mode first, then click Preview.", "OK");
                 return;
             }
             
             if (DialogueManager.Instance != null)
-            {
                 DialogueManager.Instance.StartDialogue(currentTree);
-            }
             else
-            {
-                EditorUtility.DisplayDialog("Preview", "DialogueManager not found in scene. Make sure it exists and is active.", "OK");
-            }
+                EditorUtility.DisplayDialog("Preview", "DialogueManager not found in scene.", "OK");
         }
         
         private void ValidateTree()
@@ -773,28 +1275,24 @@ namespace WhisperingGate.Editor
             var allNodes = GetAllNodes();
             
             if (currentTree.StartNode == null)
-                issues.Add("No start node assigned");
+                issues.Add("• No start node assigned");
             
             foreach (var node in allNodes)
             {
                 if (string.IsNullOrEmpty(node.NodeId))
-                    issues.Add($"Node at {AssetDatabase.GetAssetPath(node)} has no ID");
+                    issues.Add($"• Node has no ID");
                 
                 if (string.IsNullOrEmpty(node.LineText))
-                    issues.Add($"Node '{node.NodeId}' has no line text");
+                    issues.Add($"• Node '{node.NodeId}' has no text");
                 
                 if (!node.IsEndNode && node.Choices.Count == 0 && node.NextNodeIfAuto == null)
-                    issues.Add($"Node '{node.NodeId}' has no outgoing connections");
+                    issues.Add($"• Node '{node.NodeId}' has no connections");
             }
             
             if (issues.Count == 0)
-            {
-                EditorUtility.DisplayDialog("Validation", "Tree is valid! ✓", "OK");
-            }
+                EditorUtility.DisplayDialog("Validation ✓", "Tree is valid!", "OK");
             else
-            {
-                EditorUtility.DisplayDialog("Validation Issues", string.Join("\n", issues), "OK");
-            }
+                EditorUtility.DisplayDialog("Issues Found", string.Join("\n", issues), "OK");
         }
         
         private List<DialogueNode> GetAllNodes()
@@ -805,11 +1303,9 @@ namespace WhisperingGate.Editor
             var visited = new HashSet<DialogueNode>();
             var toVisit = new Queue<DialogueNode>();
             
-            // Start from the start node
             if (currentTree.StartNode != null)
                 toVisit.Enqueue(currentTree.StartNode);
             
-            // Traverse all connected nodes
             while (toVisit.Count > 0)
             {
                 var node = toVisit.Dequeue();
@@ -847,41 +1343,23 @@ namespace WhisperingGate.Editor
             return allNodes;
         }
         
-        private Vector2 GetNodePosition(DialogueNode node)
-        {
-            if (nodePositions.ContainsKey(node))
-                return nodePositions[node];
-            return Vector2.zero;
-        }
-        
         private void RefreshNodePositions()
         {
             if (currentTree == null) return;
             
-            List<DialogueNode> nodesToPosition;
+            List<DialogueNode> nodesToPosition = showAllNodes ? GetAllNodesInProject() : GetAllNodes();
             
-            if (showAllNodes)
-            {
-                nodesToPosition = GetAllNodesInProject();
-            }
-            else
-            {
-                nodesToPosition = GetAllNodes();
-            }
-            
-            // Only set positions for nodes that don't have one yet
-            const float spacing = 250f;
+            const float spacing = 280f;
             int nodesPerRow = 5;
             int currentRow = 0;
             int currentCol = 0;
             
             foreach (var node in nodesToPosition)
             {
-                // Only set position if node doesn't have one
                 if (!nodePositions.ContainsKey(node))
                 {
                     float x = 100f + (currentCol * spacing);
-                    float y = 100f + (currentRow * spacing);
+                    float y = 100f + (currentRow * (NODE_HEIGHT + 80f));
                     nodePositions[node] = new Vector2(x, y);
                 }
                 
@@ -900,4 +1378,3 @@ namespace WhisperingGate.Editor
         }
     }
 }
-

@@ -337,18 +337,19 @@ namespace WhisperingGate.Puzzles
             {
                 if (string.IsNullOrWhiteSpace(command)) continue;
 
-                // Use DialogueManager's command execution if available
-                if (DialogueManager.Instance != null)
+                // Parse and execute command
+                // Split only on first colon to preserve parameters like "cam:point:3"
+                int colonIndex = command.IndexOf(':');
+                if (colonIndex > 0)
                 {
-                    // Parse and execute command
-                    string[] parts = command.Split(':');
-                    if (parts.Length >= 1)
-                    {
-                        string type = parts[0].ToLower();
-                        string param = parts.Length > 1 ? parts[1] : "";
-
-                        ExecuteCommand(type, param);
-                    }
+                    string type = command.Substring(0, colonIndex).ToLower().Trim();
+                    string param = command.Substring(colonIndex + 1).Trim();
+                    ExecuteCommand(type, param);
+                }
+                else if (!string.IsNullOrWhiteSpace(command))
+                {
+                    // Command with no parameter
+                    ExecuteCommand(command.ToLower().Trim(), "");
                 }
             }
         }
@@ -377,6 +378,8 @@ namespace WhisperingGate.Puzzles
                         
                         if (camParts.Length > 1 && float.TryParse(camParts[1].Trim(), out float parsedDuration))
                             camDuration = parsedDuration;
+
+                        Debug.Log($"[GridPuzzle] Camera command - target: {camTarget}, duration: {camDuration}");
 
                         if (camTarget.Equals("reset", StringComparison.OrdinalIgnoreCase))
                             WhisperingGate.Camera.CameraFocusController.Instance.ReleaseFocus();

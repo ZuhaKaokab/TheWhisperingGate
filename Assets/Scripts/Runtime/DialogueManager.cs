@@ -360,9 +360,21 @@ namespace WhisperingGate.Dialogue
             if (string.IsNullOrWhiteSpace(command)) return;
             
             command = command.Trim();
-            var parts = command.Split(':');
-            var cmd = parts[0].ToLower();
-            var param = parts.Length > 1 ? parts[1].Trim() : "";
+            
+            // Split only on first colon to preserve parameters like "cam:point:3"
+            int colonIndex = command.IndexOf(':');
+            string cmd, param;
+            
+            if (colonIndex > 0)
+            {
+                cmd = command.Substring(0, colonIndex).ToLower().Trim();
+                param = command.Substring(colonIndex + 1).Trim();
+            }
+            else
+            {
+                cmd = command.ToLower().Trim();
+                param = "";
+            }
             
             Debug.Log($"[DialogueManager] Executing command: {cmd} | {param}");
             
