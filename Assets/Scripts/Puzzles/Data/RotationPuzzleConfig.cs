@@ -48,11 +48,25 @@ namespace WhisperingGate.Puzzles
         [Tooltip("Randomize starting positions on puzzle activation")]
         public bool randomizeStart = true;
 
-        [Header("Visual Settings")]
-        [Tooltip("Material/color for selected element highlight")]
+        [Header("Selection Outline")]
+        [Tooltip("Color of the selection outline")]
+        public Color selectionOutlineColor = new Color(1f, 0.8f, 0.2f, 1f); // Golden yellow
+        
+        [Tooltip("Scale multiplier for the outline (1.1 = 10% larger)")]
+        public float outlineScale = 1.15f;
+        
+        [Tooltip("Outline pulse speed (0 = no pulse)")]
+        public float outlinePulseSpeed = 2f;
+        
+        [Tooltip("Outline pulse intensity")]
+        [Range(0f, 0.2f)]
+        public float outlinePulseIntensity = 0.05f;
+
+        [Header("Visual Settings (Legacy)")]
+        [Tooltip("Material/color for selected element highlight (used if outline is disabled)")]
         public Color selectedHighlightColor = new Color(1f, 0.9f, 0.4f, 1f);
 
-        [Tooltip("Material/color for correct element")]
+        [Tooltip("Material/color for correct element (hidden by default)")]
         public Color correctHighlightColor = new Color(0.4f, 1f, 0.5f, 1f);
 
         [Header("Camera Focus")]
@@ -142,5 +156,8 @@ namespace WhisperingGate.Puzzles
         Z   // Roll
     }
 }
+
+
+
 
 

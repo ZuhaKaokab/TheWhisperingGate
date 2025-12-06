@@ -903,7 +903,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentLevelId: prologue_jungle
-  debugMode: 1
+  debugMode: 0
 --- !u!21 &255152563
 Material:
   serializedVersion: 8
@@ -2242,7 +2242,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &398581238
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2888,7 +2888,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   config: {fileID: 11400000, guid: 5846e1ca606b74c4a839a09c944da0da, type: 2}
   elementsParent: {fileID: 1952205975}
-  elementPrefab: {fileID: 2725765286718132060, guid: bd656a817c470be40af51c7f15bfe018, type: 3}
+  elementPrefab: {fileID: 2244136058849802595, guid: ce88d8941feb6954ca2dc84a4836b431, type: 3}
   preplacedElements: []
   exitKey: 27
   exitKeyAlt: 9
@@ -5295,7 +5295,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &954427750
 RectTransform:
   m_ObjectHideFlags: 0
@@ -9524,7 +9524,7 @@ MonoBehaviour:
   playerLookSensitivity: 50
   lookReturnSpeed: 5
   targetCamera: {fileID: 963194227}
-  returnAnchor: {fileID: 0}
+  returnAnchor: {fileID: 1874602305}
 --- !u!4 &1772439023
 Transform:
   m_ObjectHideFlags: 0
@@ -11327,7 +11327,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &2052787403
 MonoBehaviour:
   m_ObjectHideFlags: 0

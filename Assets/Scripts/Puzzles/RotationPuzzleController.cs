@@ -51,6 +51,10 @@ namespace WhisperingGate.Puzzles
         [SerializeField] private AudioClip solveSound;
         [SerializeField] private AudioClip selectSound;
 
+        [Header("Debug")]
+        [Tooltip("Enable debug logging for puzzle state")]
+        [SerializeField] private bool enableDebugLogs = true;
+
         // Runtime state
         private List<RotatableElement> elements = new List<RotatableElement>();
         private bool isInSolveMode = false;
@@ -130,7 +134,7 @@ namespace WhisperingGate.Puzzles
                 SpawnElements();
             }
 
-            Debug.Log($"[RotationPuzzle] '{config.puzzleId}' initialized with {elements.Count} elements");
+            if (enableDebugLogs) Debug.Log($"[RotationPuzzle] '{config.puzzleId}' initialized with {elements.Count} elements");
         }
 
         /// <summary>
@@ -189,7 +193,7 @@ namespace WhisperingGate.Puzzles
         {
             if (isSolved)
             {
-                Debug.Log($"[RotationPuzzle] '{config.puzzleId}' already solved");
+                if (enableDebugLogs) Debug.Log($"[RotationPuzzle] '{config.puzzleId}' already solved");
                 return;
             }
 
@@ -220,7 +224,7 @@ namespace WhisperingGate.Puzzles
             Cursor.visible = false;
 
             OnSolveModeEntered?.Invoke();
-            Debug.Log($"[RotationPuzzle] Entered solve mode for '{config.puzzleId}'");
+            if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Entered solve mode for '{config.puzzleId}'");
         }
 
         /// <summary>
@@ -252,7 +256,7 @@ namespace WhisperingGate.Puzzles
             }
 
             OnSolveModeExited?.Invoke();
-            Debug.Log($"[RotationPuzzle] Exited solve mode for '{config.puzzleId}'");
+            if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Exited solve mode for '{config.puzzleId}'");
         }
 
         /// <summary>
@@ -353,6 +357,22 @@ namespace WhisperingGate.Puzzles
 
             PlaySound(rotateSound);
             OnElementRotated?.Invoke(selectedElement);
+            
+            // Debug log for rotation state
+            if (enableDebugLogs)
+            {
+                int targetIndex = clockwise 
+                    ? (selectedElement.CurrentRotationIndex + 1) % config.rotationSteps
+                    : (selectedElement.CurrentRotationIndex - 1 + config.rotationSteps) % config.rotationSteps;
+                    
+                // Note: CurrentRotationIndex won't update until animation completes,
+                // so we calculate what the target will be
+                int solutionIndex = config.GetSolutionIndex(selectedElement.Row, selectedElement.Column);
+                bool willBeCorrect = (targetIndex == solutionIndex) || (solutionIndex < 0);
+                
+                Debug.Log($"[RotationPuzzle] Element [{selectedElement.Row},{selectedElement.Column}] rotating to index {targetIndex} " +
+                          $"(Solution: {solutionIndex}) → {(willBeCorrect ? "✓ CORRECT" : "✗ Wrong")}");
+            }
         }
 
         /// <summary>
@@ -361,6 +381,24 @@ namespace WhisperingGate.Puzzles
         private void OnElementRotationComplete(RotatableElement element)
         {
             element.UpdateCorrectState();
+            
+            // Debug log after rotation completes
+            if (enableDebugLogs)
+            {
+                int solutionIndex = config.GetSolutionIndex(element.Row, element.Column);
+                bool isCorrect = element.IsCorrect;
+                Debug.Log($"[RotationPuzzle] Element [{element.Row},{element.Column}] now at index {element.CurrentRotationIndex} " +
+                          $"(Solution: {solutionIndex}) → {(isCorrect ? "<color=green>✓ CORRECT</color>" : "<color=red>✗ Wrong</color>")}");
+                
+                // Show overall progress
+                int correctCount = 0;
+                foreach (var el in elements)
+                {
+                    if (el.IsCorrect) correctCount++;
+                }
+                Debug.Log($"[RotationPuzzle] Progress: {correctCount}/{elements.Count} elements correct");
+            }
+            
             CheckSolution();
         }
 
@@ -399,22 +437,34 @@ namespace WhisperingGate.Puzzles
             PlaySound(solveSound);
             Debug.Log($"[RotationPuzzle] '{config.puzzleId}' SOLVED!");
 
-            // Execute commands
-            ExecuteCommands(config.onSolvedCommands);
-
-            // Handle camera
-            if (!string.IsNullOrWhiteSpace(config.cameraFocusPointId) && config.solvedCameraHoldDuration > 0)
+            // Check if onSolvedCommands contains a camera command
+            bool hasCameraCommand = false;
+            if (config.onSolvedCommands != null)
             {
-                // Keep camera focused for duration, then release
-                if (Camera.CameraFocusController.Instance != null)
+                foreach (string cmd in config.onSolvedCommands)
                 {
-                    Camera.CameraFocusController.Instance.FocusOn(config.cameraFocusPointId, config.solvedCameraHoldDuration);
+                    if (!string.IsNullOrWhiteSpace(cmd) && cmd.Trim().StartsWith("cam:", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasCameraCommand = true;
+                        break;
+                    }
                 }
             }
-            else if (Camera.CameraFocusController.Instance != null)
+
+            // Execute commands (may include camera commands)
+            ExecuteCommands(config.onSolvedCommands);
+
+            // Only handle camera here if NO camera command was in onSolvedCommands
+            // This prevents the solve-mode camera from overriding the command-based camera
+            if (!hasCameraCommand)
             {
-                Camera.CameraFocusController.Instance.ReleaseFocus();
+                // No cam command in onSolvedCommands, so release the solve-mode camera
+                if (Camera.CameraFocusController.Instance != null)
+                {
+                    Camera.CameraFocusController.Instance.ReleaseFocus();
+                }
             }
+            // If there WAS a camera command, it already handled the camera - don't touch it
 
             // Resume player
             if (Gameplay.PlayerController.Instance != null)
@@ -464,7 +514,7 @@ namespace WhisperingGate.Puzzles
                 element.ResetVisuals();
             }
 
-            Debug.Log($"[RotationPuzzle] '{config.puzzleId}' reset");
+            if (enableDebugLogs) Debug.Log($"[RotationPuzzle] '{config.puzzleId}' reset");
         }
 
         private void PlaySound(AudioClip clip)
@@ -503,13 +553,13 @@ namespace WhisperingGate.Puzzles
                 case "flag":
                     if (GameState.Instance != null)
                         GameState.Instance.SetBool(param, true);
-                    Debug.Log($"[RotationPuzzle] Set flag: {param}");
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Set flag: {param}");
                     break;
 
                 case "unflag":
                     if (GameState.Instance != null)
                         GameState.Instance.SetBool(param, false);
-                    Debug.Log($"[RotationPuzzle] Cleared flag: {param}");
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Cleared flag: {param}");
                     break;
 
                 case "var":
@@ -534,7 +584,7 @@ namespace WhisperingGate.Puzzles
                     break;
 
                 default:
-                    Debug.Log($"[RotationPuzzle] Unknown command: {type}");
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Unknown command: {type}");
                     break;
             }
         }
@@ -553,7 +603,7 @@ namespace WhisperingGate.Puzzles
                 {
                     int current = GameState.Instance.GetInt(varName);
                     GameState.Instance.SetInt(varName, current + value);
-                    Debug.Log($"[RotationPuzzle] {varName} += {value}");
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] {varName} += {value}");
                 }
             }
             else if (minusIndex > 0)
@@ -563,7 +613,7 @@ namespace WhisperingGate.Puzzles
                 {
                     int current = GameState.Instance.GetInt(varName);
                     GameState.Instance.SetInt(varName, current - value);
-                    Debug.Log($"[RotationPuzzle] {varName} -= {value}");
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] {varName} -= {value}");
                 }
             }
         }

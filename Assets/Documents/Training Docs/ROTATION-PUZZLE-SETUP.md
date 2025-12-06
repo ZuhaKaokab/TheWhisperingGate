@@ -286,3 +286,6 @@ OnPuzzleSolved event → Start next dialogue segment
 Ready to create your puzzle! 🎯
 
 
+
+
+

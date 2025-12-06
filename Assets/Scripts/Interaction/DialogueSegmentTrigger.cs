@@ -36,6 +36,10 @@ namespace WhisperingGate.Interaction
         [SerializeField] private bool showInteractionPrompt = true;
         [SerializeField] private GameObject interactionPromptUI;
 
+        [Header("Debug")]
+        [Tooltip("Enable debug logging")]
+        [SerializeField] private bool enableDebugLogs = false;
+
         private bool hasTriggered = false;
         private bool playerInRange = false;
         private Gameplay.PlayerController playerController;
@@ -51,7 +55,7 @@ namespace WhisperingGate.Interaction
             if (collider != null)
             {
                 collider.isTrigger = true;
-                Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Collider set as trigger.");
+                if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Collider set as trigger.");
             }
             else
             {
@@ -91,12 +95,12 @@ namespace WhisperingGate.Interaction
                 prerequisitesMet &&
                 Input.GetKeyDown(KeyCode.E))
             {
-                Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: E key pressed, triggering dialogue.");
+                if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: E key pressed, triggering dialogue.");
                 TriggerDialogue();
             }
             else if (interactionMode == InteractionMode.OnInteract && playerInRange && Input.GetKeyDown(KeyCode.E))
             {
-                Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: E key pressed but prerequisites not met. Prerequisites: {prerequisitesMet}, Player in range: {playerInRange}");
+                if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: E key pressed but prerequisites not met. Prerequisites: {prerequisitesMet}, Player in range: {playerInRange}");
             }
         }
 
@@ -104,23 +108,23 @@ namespace WhisperingGate.Interaction
         {
             if (other.CompareTag("Player"))
             {
-                Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Player entered trigger zone.");
+                if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Player entered trigger zone.");
                 playerInRange = true;
                 UpdateVisualState();
 
                 if (interactionMode == InteractionMode.OnEnter && prerequisitesMet)
                 {
-                    Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Triggering dialogue (OnEnter mode).");
+                    if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Triggering dialogue (OnEnter mode).");
                     TriggerDialogue();
                 }
                 else if (interactionMode == InteractionMode.OnEnter && !prerequisitesMet)
                 {
-                    Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Prerequisites not met, cannot trigger (OnEnter mode).");
+                    if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Prerequisites not met, cannot trigger (OnEnter mode).");
                 }
             }
             else
             {
-                Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Object entered trigger but is not tagged 'Player'. Tag: {other.tag}");
+                if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Object entered trigger but is not tagged 'Player'. Tag: {other.tag}");
             }
         }
 
@@ -157,7 +161,7 @@ namespace WhisperingGate.Interaction
                         if (!segmentCompleted)
                         {
                             prerequisitesMet = false;
-                            Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Required segment '{trimmedSegment}' not completed yet.");
+                            if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Required segment '{trimmedSegment}' not completed yet.");
                             break;
                         }
                     }
@@ -177,19 +181,13 @@ namespace WhisperingGate.Interaction
                     prerequisitesMet = Core.GameState.Instance.EvaluateCondition(requiredCondition);
                     if (!prerequisitesMet)
                     {
-                        Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Condition '{requiredCondition}' not met.");
+                        if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Condition '{requiredCondition}' not met.");
                     }
                 }
             }
 
-            // Debug log for first segment (no prerequisites)
-            if (string.IsNullOrWhiteSpace(requiredSegments) && string.IsNullOrWhiteSpace(requiredCondition))
-            {
-                if (prerequisitesMet)
-                {
-                    Debug.Log($"[DialogueSegmentTrigger] {gameObject.name}: Prerequisites met (no requirements).");
-                }
-            }
+            // Note: Removed spammy per-frame log for "Prerequisites met (no requirements)"
+            // This was being called every frame in Update()
         }
 
         private void UpdateVisualState()
@@ -205,7 +203,7 @@ namespace WhisperingGate.Interaction
             // Check prerequisites again
             if (!prerequisitesMet)
             {
-                Debug.Log($"[DialogueSegmentTrigger] Prerequisites not met for {gameObject.name}");
+                if (enableDebugLogs) Debug.Log($"[DialogueSegmentTrigger] Prerequisites not met for {gameObject.name}");
                 return;
             }
 
