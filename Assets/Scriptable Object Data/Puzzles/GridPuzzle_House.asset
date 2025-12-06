@@ -30,6 +30,7 @@ MonoBehaviour:
   onSolvedCommands:
   - flag:grid_puzzle_solved
   - cam:test:3
+  - door:open:door_1
   onFailedCommands: []
   correctStepSFX: puzzle_step_correct
   wrongStepSFX: puzzle_step_wrong

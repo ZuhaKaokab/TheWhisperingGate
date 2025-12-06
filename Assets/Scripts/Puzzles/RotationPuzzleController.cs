@@ -583,6 +583,27 @@ namespace WhisperingGate.Puzzles
                     }
                     break;
 
+                case "door":
+                    // Format: door:action:door_id or door:door_id (defaults to open)
+                    {
+                        string[] doorParts = param.Split(':');
+                        string doorAction = doorParts.Length > 1 ? doorParts[0].Trim() : "open";
+                        string doorId = doorParts.Length > 1 ? doorParts[1].Trim() : doorParts[0].Trim();
+                        Interaction.Door.ExecuteCommand(doorAction, doorId);
+                        if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Door command: {doorAction} {doorId}");
+                    }
+                    break;
+
+                case "activate":
+                    Interaction.ActivatableObject.ExecuteCommand("activate", param);
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Activate: {param}");
+                    break;
+
+                case "deactivate":
+                    Interaction.ActivatableObject.ExecuteCommand("deactivate", param);
+                    if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Deactivate: {param}");
+                    break;
+
                 default:
                     if (enableDebugLogs) Debug.Log($"[RotationPuzzle] Unknown command: {type}");
                     break;

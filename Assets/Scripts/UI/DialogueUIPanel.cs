@@ -19,7 +19,7 @@ namespace WhisperingGate.UI
         [SerializeField] private TMP_Text speakerNameText;
         [SerializeField] private TMP_Text dialogueText;
         [SerializeField] private Button skipButton;
-        [SerializeField] private VerticalLayoutGroup choicesContainer;
+        [SerializeField] private GridLayoutGroup choicesContainer;
         [SerializeField] private Button choiceButtonPrefab;
         [SerializeField] private CanvasGroup panelCanvasGroup;
         

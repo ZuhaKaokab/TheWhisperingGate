@@ -388,6 +388,27 @@ namespace WhisperingGate.Puzzles
                     }
                     break;
 
+                case "door":
+                    // Format: door:action:door_id or door:door_id (defaults to open)
+                    {
+                        string[] doorParts = param.Split(':');
+                        string doorAction = doorParts.Length > 1 ? doorParts[0].Trim() : "open";
+                        string doorId = doorParts.Length > 1 ? doorParts[1].Trim() : doorParts[0].Trim();
+                        Interaction.Door.ExecuteCommand(doorAction, doorId);
+                        Debug.Log($"[GridPuzzle] Door command: {doorAction} {doorId}");
+                    }
+                    break;
+
+                case "activate":
+                    Interaction.ActivatableObject.ExecuteCommand("activate", param);
+                    Debug.Log($"[GridPuzzle] Activate: {param}");
+                    break;
+
+                case "deactivate":
+                    Interaction.ActivatableObject.ExecuteCommand("deactivate", param);
+                    Debug.Log($"[GridPuzzle] Deactivate: {param}");
+                    break;
+
                 default:
                     Debug.Log($"[GridPuzzle] Unknown command type: {type}");
                     break;

@@ -415,6 +415,26 @@ namespace WhisperingGate.Dialogue
                     HandleCameraCommand(param);
                     break;
                 
+                case "journal":
+                    HandleJournalCommand(param);
+                    break;
+                
+                case "door":
+                    HandleDoorCommand(param);
+                    break;
+                
+                case "activate":
+                    Interaction.ActivatableObject.ExecuteCommand("activate", param);
+                    break;
+                
+                case "deactivate":
+                    Interaction.ActivatableObject.ExecuteCommand("deactivate", param);
+                    break;
+                
+                case "flashlight":
+                    HandleFlashlightCommand(param);
+                    break;
+                
                 default:
                     Debug.LogWarning($"[DialogueManager] Unknown command: {cmd}");
                     break;
@@ -480,6 +500,71 @@ namespace WhisperingGate.Dialogue
             {
                 CameraFocusController.Instance.FocusOn(target, duration);
             }
+        }
+        
+        private void HandleJournalCommand(string param)
+        {
+            if (Journal.JournalManager.Instance == null)
+            {
+                Debug.LogWarning("[DialogueManager] JournalManager not found. Journal command ignored.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(param))
+            {
+                Debug.LogWarning("[DialogueManager] Journal command called with empty parameter");
+                return;
+            }
+
+            // Format: action:param (e.g., unlock:page_1, open, goto:page_2, pickup)
+            string[] parts = param.Split(':');
+            string action = parts[0].ToLower().Trim();
+            string actionParam = parts.Length > 1 ? parts[1].Trim() : "";
+
+            Journal.JournalManager.Instance.ExecuteCommand(action, actionParam);
+            Debug.Log($"[DialogueManager] Journal command: {action} {actionParam}");
+        }
+        
+        private void HandleDoorCommand(string param)
+        {
+            if (string.IsNullOrWhiteSpace(param))
+            {
+                Debug.LogWarning("[DialogueManager] Door command called with empty parameter");
+                return;
+            }
+
+            // Format: action:door_id (e.g., open:door_1, close:door_1, toggle:main_gate)
+            string[] parts = param.Split(':');
+            string action = parts[0].ToLower().Trim();
+            string doorId = parts.Length > 1 ? parts[1].Trim() : "";
+
+            if (string.IsNullOrWhiteSpace(doorId))
+            {
+                // If no action specified, assume "open" with param as door_id
+                doorId = action;
+                action = "open";
+            }
+
+            Interaction.Door.ExecuteCommand(action, doorId);
+            Debug.Log($"[DialogueManager] Door command: {action} {doorId}");
+        }
+        
+        private void HandleFlashlightCommand(string param)
+        {
+            if (string.IsNullOrWhiteSpace(param))
+            {
+                // Default to toggle
+                Items.FlashlightController.ExecuteCommand("toggle");
+                return;
+            }
+
+            // Format: action:param (e.g., on, off, toggle, recharge:50)
+            string[] parts = param.Split(':');
+            string action = parts[0].ToLower().Trim();
+            string actionParam = parts.Length > 1 ? parts[1].Trim() : "";
+
+            Items.FlashlightController.ExecuteCommand(action, actionParam);
+            Debug.Log($"[DialogueManager] Flashlight command: {action} {actionParam}");
         }
         
         private void EndDialogue()

@@ -41,6 +41,11 @@ namespace WhisperingGate.Gameplay
         private CharacterController controller;
         private ViewMode currentViewMode = ViewMode.FirstPerson;
         private bool inputEnabled = true;
+        
+        /// <summary>
+        /// Current camera view mode (First Person or Third Person).
+        /// </summary>
+        public ViewMode CurrentViewMode => currentViewMode;
 
         private float pitch;
         private float yaw;
