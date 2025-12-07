@@ -130,6 +130,50 @@ namespace WhisperingGate.Gameplay
             playerInventory.Clear();
             Debug.Log("[InventoryManager] Inventory cleared");
         }
+
+        #region Save System Support
+
+        /// <summary>
+        /// Container for save data with item counts.
+        /// </summary>
+        public struct ItemSaveData
+        {
+            public string itemId;
+            public int count;
+        }
+
+        /// <summary>
+        /// Get all items with counts for saving.
+        /// </summary>
+        public List<ItemSaveData> GetAllItemsForSave()
+        {
+            var result = new List<ItemSaveData>();
+            var counts = new Dictionary<string, int>();
+            
+            foreach (var itemId in playerInventory)
+            {
+                if (!counts.ContainsKey(itemId))
+                    counts[itemId] = 0;
+                counts[itemId]++;
+            }
+            
+            foreach (var kvp in counts)
+            {
+                result.Add(new ItemSaveData { itemId = kvp.Key, count = kvp.Value });
+            }
+            
+            return result;
+        }
+
+        /// <summary>
+        /// Add item by ID (alias for AddItem, used by save system).
+        /// </summary>
+        public void AddItemById(string itemId)
+        {
+            AddItem(itemId);
+        }
+
+        #endregion
     }
 }
 

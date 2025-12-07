@@ -287,6 +287,37 @@ namespace WhisperingGate.Gameplay
         }
 
         #endregion
+
+        #region Save System Support
+
+        /// <summary>
+        /// Current segment ID for saving.
+        /// </summary>
+        public string CurrentSegmentId => currentCheckpointId;
+
+        /// <summary>
+        /// Restore progress from save data.
+        /// </summary>
+        public void RestoreProgress(string segmentId, List<string> segments)
+        {
+            completedSegments.Clear();
+            
+            if (segments != null)
+            {
+                foreach (var segment in segments)
+                {
+                    if (!string.IsNullOrEmpty(segment))
+                        completedSegments.Add(segment);
+                }
+            }
+
+            currentCheckpointId = segmentId ?? string.Empty;
+
+            if (debugMode)
+                Debug.Log($"[LevelManager] Progress restored - Segment: {segmentId}, Completed: {completedSegments.Count}");
+        }
+
+        #endregion
     }
 }
 

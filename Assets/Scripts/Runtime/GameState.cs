@@ -334,6 +334,45 @@ namespace WhisperingGate.Core
         }
 
         #endregion
+
+        #region Save System Support
+
+        /// <summary>
+        /// Get all boolean flags for saving.
+        /// </summary>
+        public Dictionary<string, bool> GetAllFlags()
+        {
+            return new Dictionary<string, bool>(boolVariables);
+        }
+
+        /// <summary>
+        /// Get all integer variables for saving.
+        /// </summary>
+        public Dictionary<string, int> GetAllInts()
+        {
+            return new Dictionary<string, int>(intVariables);
+        }
+
+        /// <summary>
+        /// Get all string variables for saving.
+        /// </summary>
+        public Dictionary<string, string> GetAllStrings()
+        {
+            return new Dictionary<string, string>(stringVariables);
+        }
+
+        /// <summary>
+        /// Clear all variables (for loading).
+        /// </summary>
+        public void ClearAll()
+        {
+            intVariables.Clear();
+            boolVariables.Clear();
+            floatVariables.Clear();
+            stringVariables.Clear();
+        }
+
+        #endregion
     }
 }
 

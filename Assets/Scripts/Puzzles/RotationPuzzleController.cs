@@ -648,6 +648,29 @@ namespace WhisperingGate.Puzzles
             }
         }
 
+        /// <summary>
+        /// Set the solved state directly (used by save system).
+        /// </summary>
+        public void SetSolvedState(bool solved)
+        {
+            isSolved = solved;
+            isInSolveMode = false;
+
+            if (solved && config != null)
+            {
+                // Set all elements to their correct/solved positions
+                for (int i = 0; i < elements.Count && i < config.solutionIndices.Count; i++)
+                {
+                    if (elements[i] != null)
+                    {
+                        elements[i].SetRotationIndex(config.solutionIndices[i]);
+                        elements[i].SetSelected(false);
+                    }
+                }
+                Debug.Log($"[RotationPuzzle] '{config.puzzleId}' restored as solved");
+            }
+        }
+
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {

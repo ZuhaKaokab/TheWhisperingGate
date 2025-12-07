@@ -548,6 +548,26 @@ namespace WhisperingGate.Puzzles
             return GetTile(coord.x, coord.y);
         }
 
+        /// <summary>
+        /// Set the solved state directly (used by save system).
+        /// </summary>
+        public void SetSolvedState(bool solved)
+        {
+            isSolved = solved;
+            isActive = !solved;
+
+            if (solved)
+            {
+                // Lock all tiles
+                foreach (var tile in allTiles)
+                {
+                    tile.Press();
+                    tile.Lock();
+                }
+                Debug.Log($"[GridPuzzle] '{config?.puzzleId}' restored as solved");
+            }
+        }
+
         private void OnDrawGizmos()
         {
             if (config == null) return;
