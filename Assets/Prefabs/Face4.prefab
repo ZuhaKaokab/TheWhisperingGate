@@ -72,6 +72,7 @@ MonoBehaviour:
   isLocked: 0
   tileVisual: {fileID: 0}
   tileRenderer: {fileID: 0}
+  triggerCollider: {fileID: 0}
   defaultMaterial: {fileID: 0}
   pressedMaterial: {fileID: 0}
   wrongMaterial: {fileID: 0}
@@ -136,8 +137,8 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 963798294112862009, guid: 7410b02e8ae059047918de7993a91173, type: 3}
-  - {fileID: 6449254509915625029, guid: 7410b02e8ae059047918de7993a91173, type: 3}
+  - {fileID: 2100000, guid: e1c3c4a244d3c1646835db72d22f063f, type: 2}
+  - {fileID: 2100000, guid: e1c3c4a244d3c1646835db72d22f063f, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

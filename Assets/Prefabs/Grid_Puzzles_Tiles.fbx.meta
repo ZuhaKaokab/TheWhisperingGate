@@ -5,6 +5,41 @@ ModelImporter:
   internalIDToNameTable: []
   externalObjects:
   - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Face_2
+    second: {fileID: 2100000, guid: fb20d566f59fb6d41bfc47d67af395ed, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Face_3
+    second: {fileID: 2100000, guid: 7803f065bb7b3cb48a4f74cb88491a58, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Face_4
+    second: {fileID: 2100000, guid: e1c3c4a244d3c1646835db72d22f063f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Face_5
+    second: {fileID: 2100000, guid: bf0f1501c6705dc44b31089f2661cd74, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Face_6
+    second: {fileID: 2100000, guid: ee9db5406e03b704ab9084d8eb74e5cb, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Face_7
+    second: {fileID: 2100000, guid: 5f314ccc00ebd5f4eaede85d70b38ee6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Stone
+    second: {fileID: 2100000, guid: 422df2bb36af29a469c903dc85cff524, type: 2}
+  - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: Face1_Base
