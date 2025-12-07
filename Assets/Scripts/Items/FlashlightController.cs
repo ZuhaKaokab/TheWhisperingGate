@@ -20,15 +20,22 @@ namespace WhisperingGate.Items
         [Tooltip("Spotlight component for the flashlight beam")]
         [SerializeField] private Light flashlightSpotlight;
 
-        [Header("View Mode Anchors")]
-        [Tooltip("Anchor point for First Person view (e.g., near camera or hand)")]
-        [SerializeField] private Transform fppAnchor;
+        [Header("Camera Following")]
+        [Tooltip("Reference to player camera - flashlight will point where camera looks")]
+        [SerializeField] private UnityEngine.Camera playerCamera;
         
-        [Tooltip("Anchor point for Third Person view (e.g., player's hand bone)")]
-        [SerializeField] private Transform tppAnchor;
+        [Tooltip("Offset from camera position for the light origin")]
+        [SerializeField] private Vector3 lightPositionOffset = new Vector3(0.3f, -0.2f, 0.5f);
         
-        [Tooltip("Smoothly transition between anchors")]
-        [SerializeField] private float anchorTransitionSpeed = 10f;
+        [Tooltip("How quickly flashlight rotation follows camera")]
+        [SerializeField] private float rotationFollowSpeed = 15f;
+        
+        [Tooltip("How quickly flashlight position follows camera")]
+        [SerializeField] private float positionFollowSpeed = 20f;
+
+        [Header("View Mode Settings")]
+        [Tooltip("Offset for Third Person view (relative to player)")]
+        [SerializeField] private Vector3 tppOffset = new Vector3(0.5f, 1.5f, 0f);
         
         [Tooltip("Hide flashlight model in FPP (only show light)")]
         [SerializeField] private bool hideModelInFPP = false;
@@ -68,8 +75,8 @@ namespace WhisperingGate.Items
         private bool isOn = false;
         private bool isEnabled = false;
         private float baseIntensity;
-        private Transform currentAnchor;
         private bool isFirstPerson = true;
+        private Transform playerTransform;
 
         public bool HasFlashlight => hasFlashlight;
         public bool IsOn => isOn;
@@ -91,8 +98,13 @@ namespace WhisperingGate.Items
 
             baseIntensity = lightIntensity;
             
-            // Set initial anchor
-            currentAnchor = fppAnchor != null ? fppAnchor : transform;
+            // Find camera if not assigned
+            if (playerCamera == null)
+                playerCamera = UnityEngine.Camera.main;
+
+            // Find player transform
+            if (PlayerController.Instance != null)
+                playerTransform = PlayerController.Instance.transform;
 
             // Start disabled
             SetFlashlightVisible(false);
@@ -107,6 +119,16 @@ namespace WhisperingGate.Items
             }
         }
 
+        private void Start()
+        {
+            // Try to find references again if not found in Awake
+            if (playerCamera == null)
+                playerCamera = UnityEngine.Camera.main;
+            
+            if (playerTransform == null && PlayerController.Instance != null)
+                playerTransform = PlayerController.Instance.transform;
+        }
+
         private void Update()
         {
             if (!hasFlashlight || !isEnabled) return;
@@ -117,11 +139,11 @@ namespace WhisperingGate.Items
                 Toggle();
             }
 
-            // Check view mode and update anchor
-            UpdateViewModeAnchor();
+            // Check view mode
+            UpdateViewMode();
 
-            // Smoothly follow anchor
-            UpdateFlashlightPosition();
+            // Update flashlight to follow camera look direction
+            UpdateFlashlightTransform();
 
             // Battery drain
             if (isOn && useBattery)
@@ -145,10 +167,17 @@ namespace WhisperingGate.Items
             }
         }
 
+        private void LateUpdate()
+        {
+            // LateUpdate ensures flashlight follows camera after camera has updated
+            if (!hasFlashlight || !isEnabled) return;
+            UpdateFlashlightTransform();
+        }
+
         /// <summary>
-        /// Check PlayerController view mode and update anchor accordingly.
+        /// Check PlayerController view mode.
         /// </summary>
-        private void UpdateViewModeAnchor()
+        private void UpdateViewMode()
         {
             if (PlayerController.Instance == null) return;
             
@@ -157,7 +186,6 @@ namespace WhisperingGate.Items
             if (currentlyFirstPerson != isFirstPerson)
             {
                 isFirstPerson = currentlyFirstPerson;
-                currentAnchor = isFirstPerson ? fppAnchor : tppAnchor;
                 
                 // Handle model visibility based on view mode
                 if (hideModelInFPP && flashlightModel != null && hasFlashlight)
@@ -165,30 +193,80 @@ namespace WhisperingGate.Items
                     flashlightModel.SetActive(!isFirstPerson);
                 }
                 
-                if (enableDebugLogs) Debug.Log($"[Flashlight] Switched to {(isFirstPerson ? "FPP" : "TPP")} anchor");
+                if (enableDebugLogs) Debug.Log($"[Flashlight] Switched to {(isFirstPerson ? "FPP" : "TPP")} mode");
             }
         }
 
         /// <summary>
-        /// Update flashlight position to follow current anchor.
+        /// Update flashlight position and rotation to follow camera look direction.
         /// </summary>
-        private void UpdateFlashlightPosition()
+        private void UpdateFlashlightTransform()
         {
-            if (currentAnchor == null || flashlightModel == null) return;
-            
-            // Smoothly move to anchor position
-            flashlightModel.transform.position = Vector3.Lerp(
-                flashlightModel.transform.position,
-                currentAnchor.position,
-                Time.deltaTime * anchorTransitionSpeed
-            );
-            
-            // Smoothly rotate to anchor rotation
-            flashlightModel.transform.rotation = Quaternion.Slerp(
-                flashlightModel.transform.rotation,
-                currentAnchor.rotation,
-                Time.deltaTime * anchorTransitionSpeed
-            );
+            if (playerCamera == null) return;
+
+            // Calculate target position based on view mode
+            Vector3 targetPosition;
+            Quaternion targetRotation = playerCamera.transform.rotation;
+
+            if (isFirstPerson)
+            {
+                // In FPP: Position relative to camera with offset
+                targetPosition = playerCamera.transform.position 
+                    + playerCamera.transform.right * lightPositionOffset.x
+                    + playerCamera.transform.up * lightPositionOffset.y
+                    + playerCamera.transform.forward * lightPositionOffset.z;
+            }
+            else
+            {
+                // In TPP: Position relative to player with offset, but still look where camera looks
+                if (playerTransform == null && PlayerController.Instance != null)
+                    playerTransform = PlayerController.Instance.transform;
+                
+                if (playerTransform != null)
+                {
+                    targetPosition = playerTransform.position 
+                        + playerTransform.right * tppOffset.x
+                        + Vector3.up * tppOffset.y
+                        + playerTransform.forward * tppOffset.z;
+                }
+                else
+                {
+                    targetPosition = playerCamera.transform.position + lightPositionOffset;
+                }
+            }
+
+            // Update flashlight model position (if exists)
+            if (flashlightModel != null)
+            {
+                flashlightModel.transform.position = Vector3.Lerp(
+                    flashlightModel.transform.position,
+                    targetPosition,
+                    Time.deltaTime * positionFollowSpeed
+                );
+                
+                flashlightModel.transform.rotation = Quaternion.Slerp(
+                    flashlightModel.transform.rotation,
+                    targetRotation,
+                    Time.deltaTime * rotationFollowSpeed
+                );
+            }
+
+            // Update spotlight position and rotation directly (this is what actually lights the scene)
+            if (flashlightSpotlight != null)
+            {
+                flashlightSpotlight.transform.position = Vector3.Lerp(
+                    flashlightSpotlight.transform.position,
+                    targetPosition,
+                    Time.deltaTime * positionFollowSpeed
+                );
+                
+                // Spotlight always points exactly where camera looks
+                flashlightSpotlight.transform.rotation = Quaternion.Slerp(
+                    flashlightSpotlight.transform.rotation,
+                    targetRotation,
+                    Time.deltaTime * rotationFollowSpeed
+                );
+            }
         }
 
         /// <summary>

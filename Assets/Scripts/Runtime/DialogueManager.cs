@@ -422,6 +422,10 @@ namespace WhisperingGate.Dialogue
                 case "door":
                     HandleDoorCommand(param);
                     break;
+
+                case "sky":
+                    Environment.SkyboxTransitionTrigger.ExecuteCommand(param);
+                    break;
                 
                 case "activate":
                     Interaction.ActivatableObject.ExecuteCommand("activate", param);
