@@ -16,7 +16,10 @@ namespace WhisperingGate.Puzzles
         [SerializeField] private GridPuzzleConfig config;
 
         [Header("Grid Setup")]
-        [Tooltip("Prefab for each tile (cube with collider)")]
+        [Tooltip("Array of tile prefabs to randomly scatter across the grid")]
+        [SerializeField] private GameObject[] tilePrefabs;
+        
+        [Tooltip("Legacy single prefab (used if tilePrefabs array is empty)")]
         [SerializeField] private GameObject tilePrefab;
         
         [Tooltip("Spacing between tiles")]
@@ -24,6 +27,16 @@ namespace WhisperingGate.Puzzles
         
         [Tooltip("Parent transform for generated tiles")]
         [SerializeField] private Transform tilesParent;
+        
+        [Tooltip("Random seed for tile distribution (-1 for random each time)")]
+        [SerializeField] private int randomSeed = -1;
+
+        [Header("Trigger Zone Settings")]
+        [Tooltip("Y offset for the trigger zone. Positive values move it UP. Use this to position the trigger at ground/walking level.")]
+        [SerializeField] private float triggerHeightOffset = 0.5f;
+        
+        [Tooltip("Size of the trigger box (X, Y, Z). Y should be tall enough to catch the player.")]
+        [SerializeField] private Vector3 triggerSize = new Vector3(1f, 1f, 1f);
 
         [Header("Runtime State")]
         [SerializeField] private bool isActive = false;
@@ -67,18 +80,63 @@ namespace WhisperingGate.Puzzles
 
         private void Start()
         {
-            if (config != null && tilePrefab != null)
+            if (config != null && HasValidPrefabs())
             {
                 GenerateGrid();
             }
             else
             {
-                Debug.LogWarning($"[GridPuzzle] {gameObject.name}: Missing config or tilePrefab!");
+                Debug.LogWarning($"[GridPuzzle] {gameObject.name}: Missing config or tile prefabs!");
             }
         }
 
         /// <summary>
+        /// Check if we have at least one valid tile prefab.
+        /// </summary>
+        private bool HasValidPrefabs()
+        {
+            // Check array first
+            if (tilePrefabs != null && tilePrefabs.Length > 0)
+            {
+                foreach (var prefab in tilePrefabs)
+                {
+                    if (prefab != null) return true;
+                }
+            }
+            // Fall back to legacy single prefab
+            return tilePrefab != null;
+        }
+
+        /// <summary>
+        /// Get a random tile prefab from the available prefabs.
+        /// </summary>
+        private GameObject GetRandomTilePrefab(System.Random rng)
+        {
+            // Use array if available and has valid prefabs
+            if (tilePrefabs != null && tilePrefabs.Length > 0)
+            {
+                // Filter out null entries
+                var validPrefabs = new System.Collections.Generic.List<GameObject>();
+                foreach (var prefab in tilePrefabs)
+                {
+                    if (prefab != null)
+                        validPrefabs.Add(prefab);
+                }
+
+                if (validPrefabs.Count > 0)
+                {
+                    int index = rng.Next(validPrefabs.Count);
+                    return validPrefabs[index];
+                }
+            }
+            
+            // Fall back to legacy single prefab
+            return tilePrefab;
+        }
+
+        /// <summary>
         /// Generate the tile grid based on config.
+        /// Uses multiple tile prefabs scattered randomly if available.
         /// </summary>
         [ContextMenu("Generate Grid")]
         public void GenerateGrid()
@@ -86,10 +144,21 @@ namespace WhisperingGate.Puzzles
             // Clear existing tiles
             ClearGrid();
 
-            if (config == null || tilePrefab == null)
+            if (config == null || !HasValidPrefabs())
             {
-                Debug.LogError("[GridPuzzle] Cannot generate grid: missing config or prefab");
+                Debug.LogError("[GridPuzzle] Cannot generate grid: missing config or prefabs");
                 return;
+            }
+
+            // Initialize random with seed (or use random seed if -1)
+            System.Random rng;
+            if (randomSeed >= 0)
+            {
+                rng = new System.Random(randomSeed);
+            }
+            else
+            {
+                rng = new System.Random();
             }
 
             tileGrid = new GridTile[config.cols, config.rows];
@@ -97,6 +166,9 @@ namespace WhisperingGate.Puzzles
             // Calculate grid center offset
             float offsetX = (config.cols - 1) * tileSpacing * 0.5f;
             float offsetZ = (config.rows - 1) * tileSpacing * 0.5f;
+
+            // Count prefab usage for debug logging
+            var prefabUsageCount = new System.Collections.Generic.Dictionary<string, int>();
 
             for (int x = 0; x < config.cols; x++)
             {
@@ -108,14 +180,23 @@ namespace WhisperingGate.Puzzles
                         z * tileSpacing - offsetZ
                     );
 
-                    GameObject tileObj = Instantiate(tilePrefab, position, Quaternion.identity, tilesParent);
+                    // Get a random prefab for this tile
+                    GameObject selectedPrefab = GetRandomTilePrefab(rng);
+                    
+                    GameObject tileObj = Instantiate(selectedPrefab, position, Quaternion.identity, tilesParent);
                     tileObj.name = $"Tile_{x}_{z}";
+
+                    // Track prefab usage
+                    string prefabName = selectedPrefab.name;
+                    if (!prefabUsageCount.ContainsKey(prefabName))
+                        prefabUsageCount[prefabName] = 0;
+                    prefabUsageCount[prefabName]++;
 
                     GridTile tile = tileObj.GetComponent<GridTile>();
                     if (tile == null)
                         tile = tileObj.AddComponent<GridTile>();
 
-                    tile.Initialize(new Vector2Int(x, z), config.tileSinkDepth, config.tileMoveSpeed);
+                    tile.Initialize(new Vector2Int(x, z), config.tileSinkDepth, config.tileMoveSpeed, triggerHeightOffset, triggerSize);
                     
                     // Subscribe to tile events
                     tile.OnPlayerStep += HandlePlayerStep;
@@ -126,7 +207,13 @@ namespace WhisperingGate.Puzzles
                 }
             }
 
-            Debug.Log($"[GridPuzzle] Generated {config.cols}x{config.rows} grid for '{config.puzzleId}'");
+            // Log prefab distribution
+            string distribution = "";
+            foreach (var kvp in prefabUsageCount)
+            {
+                distribution += $"{kvp.Key}: {kvp.Value}, ";
+            }
+            Debug.Log($"[GridPuzzle] Generated {config.cols}x{config.rows} grid for '{config.puzzleId}'. Prefab distribution: {distribution.TrimEnd(',', ' ')}");
         }
 
         /// <summary>

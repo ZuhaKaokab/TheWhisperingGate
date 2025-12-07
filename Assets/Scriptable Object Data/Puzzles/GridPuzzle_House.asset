@@ -17,15 +17,22 @@ MonoBehaviour:
   cols: 5
   mode: 0
   correctPath:
+  - {x: 0, y: 0}
+  - {x: 1, y: 0}
   - {x: 2, y: 0}
-  - {x: 2, y: 1}
+  - {x: 3, y: 0}
+  - {x: 3, y: 1}
+  - {x: 3, y: 2}
   - {x: 2, y: 2}
-  - {x: 2, y: 3}
+  - {x: 1, y: 2}
+  - {x: 1, y: 3}
+  - {x: 1, y: 4}
   - {x: 2, y: 4}
+  - {x: 3, y: 4}
   safeTiles: []
-  startTile: {x: 2, y: 0}
-  endTile: {x: 2, y: 4}
-  tileSinkDepth: 0.15
+  startTile: {x: 0, y: 0}
+  endTile: {x: 3, y: 4}
+  tileSinkDepth: 0.1
   tileMoveSpeed: 5
   onSolvedCommands:
   - flag:grid_puzzle_solved

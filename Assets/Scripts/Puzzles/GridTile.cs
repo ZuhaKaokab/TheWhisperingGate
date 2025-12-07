@@ -7,7 +7,6 @@ namespace WhisperingGate.Puzzles
     /// Represents a single tile in the Grid Path Puzzle.
     /// Handles player detection and visual state changes.
     /// </summary>
-    [RequireComponent(typeof(Collider))]
     public class GridTile : MonoBehaviour
     {
         [Header("Tile Identity")]
@@ -21,6 +20,10 @@ namespace WhisperingGate.Puzzles
         [SerializeField] private Transform tileVisual; // The part that moves down
         [SerializeField] private Renderer tileRenderer;
 
+        [Header("Trigger Zone")]
+        [Tooltip("The trigger collider used for player detection (auto-created if not assigned)")]
+        [SerializeField] private BoxCollider triggerCollider;
+        
         [Header("Materials (Optional)")]
         [SerializeField] private Material defaultMaterial;
         [SerializeField] private Material pressedMaterial;
@@ -63,6 +66,20 @@ namespace WhisperingGate.Puzzles
         /// </summary>
         public void Initialize(Vector2Int coords, float sinkAmount, float speed)
         {
+            Initialize(coords, sinkAmount, speed, 0.5f, Vector3.one);
+        }
+
+        /// <summary>
+        /// Initialize tile with coordinates, settings, and trigger configuration.
+        /// Called by GridPuzzleController during setup.
+        /// </summary>
+        /// <param name="coords">Grid coordinates of this tile</param>
+        /// <param name="sinkAmount">How far the tile sinks when pressed</param>
+        /// <param name="speed">How fast the tile moves</param>
+        /// <param name="triggerHeightOffset">Y offset for the trigger zone (use positive values to raise it above the tile)</param>
+        /// <param name="triggerSize">Size of the trigger box</param>
+        public void Initialize(Vector2Int coords, float sinkAmount, float speed, float triggerHeightOffset, Vector3 triggerSize)
+        {
             coordinates = coords;
             sinkDepth = sinkAmount;
             moveSpeed = speed;
@@ -79,6 +96,39 @@ namespace WhisperingGate.Puzzles
 
             if (defaultMaterial == null && tileRenderer != null)
                 defaultMaterial = tileRenderer.material;
+
+            // Setup trigger collider
+            SetupTriggerCollider(triggerHeightOffset, triggerSize);
+        }
+
+        /// <summary>
+        /// Setup or adjust the trigger collider for player detection.
+        /// </summary>
+        /// <param name="heightOffset">Y offset for the trigger center (positive = higher)</param>
+        /// <param name="size">Size of the trigger box</param>
+        public void SetupTriggerCollider(float heightOffset, Vector3 size)
+        {
+            // Find or create trigger collider
+            if (triggerCollider == null)
+            {
+                triggerCollider = GetComponent<BoxCollider>();
+                
+                // If no BoxCollider exists, create one
+                if (triggerCollider == null)
+                {
+                    triggerCollider = gameObject.AddComponent<BoxCollider>();
+                }
+            }
+
+            // Configure as trigger
+            triggerCollider.isTrigger = true;
+            
+            // Set size
+            triggerCollider.size = size;
+            
+            // Offset the center upward so it's at the walking level
+            // The offset is relative to the tile's local space
+            triggerCollider.center = new Vector3(0, heightOffset, 0);
         }
 
         /// <summary>
@@ -194,6 +244,14 @@ namespace WhisperingGate.Puzzles
             // Show tile coordinates in editor
             Gizmos.color = isPressed ? Color.green : Color.white;
             Gizmos.DrawWireCube(transform.position + Vector3.up * 0.1f, new Vector3(0.9f, 0.1f, 0.9f));
+
+            // Show trigger zone
+            if (triggerCollider != null)
+            {
+                Gizmos.color = new Color(0f, 1f, 1f, 0.3f); // Cyan transparent
+                Vector3 triggerWorldPos = transform.TransformPoint(triggerCollider.center);
+                Gizmos.DrawWireCube(triggerWorldPos, triggerCollider.size);
+            }
         }
 
         private void OnDrawGizmosSelected()
@@ -210,6 +268,25 @@ namespace WhisperingGate.Puzzles
                     alignment = TextAnchor.MiddleCenter
                 }
             );
+
+            // Show trigger zone more prominently when selected
+            if (triggerCollider != null)
+            {
+                Gizmos.color = Color.cyan;
+                Vector3 triggerWorldPos = transform.TransformPoint(triggerCollider.center);
+                Gizmos.DrawWireCube(triggerWorldPos, triggerCollider.size);
+                
+                // Draw label showing trigger height
+                UnityEditor.Handles.Label(
+                    triggerWorldPos + Vector3.up * 0.3f,
+                    $"Trigger Zone (Y offset: {triggerCollider.center.y:F2})",
+                    new GUIStyle { 
+                        normal = { textColor = Color.cyan },
+                        fontSize = 10,
+                        alignment = TextAnchor.MiddleCenter
+                    }
+                );
+            }
 #endif
         }
     }
