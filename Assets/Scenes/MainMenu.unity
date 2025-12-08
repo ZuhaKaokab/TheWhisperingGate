@@ -965,8 +965,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1cac2b3bed50dc4d9b5aae9a2c543db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameplaySceneName: GameplayScene
-  newGameStartScene: GameplayScene
+  gameplaySceneName: GameplayScene2
+  newGameStartScene: GameplayScene2
   mainMenuPanel: {fileID: 577632622}
   resumeButton: {fileID: 1819490900}
   newGameButton: {fileID: 1523894310}
@@ -3008,6 +3008,7 @@ MonoBehaviour:
   saveFileExtension: .json
   useEncryption: 0
   prettyPrintJson: 1
+  fallbackGameplayScene: GameplayScene
   enableAutoSave: 1
   autoSaveInterval: 300
   autoSaveOnSceneChange: 1

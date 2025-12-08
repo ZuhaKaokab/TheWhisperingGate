@@ -36,7 +36,7 @@ MonoBehaviour:
   tileMoveSpeed: 5
   onSolvedCommands:
   - flag:grid_puzzle_solved
-  - cam:test:3
+  - cam:house_door:3
   - door:open:door_1
   onFailedCommands: []
   correctStepSFX: puzzle_step_correct

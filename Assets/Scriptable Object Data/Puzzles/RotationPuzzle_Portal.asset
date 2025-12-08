@@ -33,3 +33,4 @@ MonoBehaviour:
   onSolvedCommands:
   - cam:portal:4
   - flag:portal_unlocked
+  - activate:portal_effect
