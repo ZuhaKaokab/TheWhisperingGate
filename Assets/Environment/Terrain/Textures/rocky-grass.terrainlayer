@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1953259897 &8574412962073106934
+TerrainLayer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: rocky-grass
+  m_DiffuseTexture: {fileID: 2800000, guid: a420993c45206e34192e62514182b646, type: 3}
+  m_NormalMapTexture: {fileID: 2800000, guid: f9f98f7a49f714040adb347995ca4e7f, type: 3}
+  m_MaskMapTexture: {fileID: 2800000, guid: 8b7c778b44b929c4b87fb39023eb6e85, type: 3}
+  m_TileSize: {x: 30, y: 30}
+  m_TileOffset: {x: 0, y: 0}
+  m_Specular: {r: 0, g: 0, b: 0, a: 0}
+  m_Metallic: 0
+  m_Smoothness: 0
+  m_NormalScale: 1
+  m_DiffuseRemapMin: {x: 0, y: 0, z: 0, w: 0}
+  m_DiffuseRemapMax: {x: 1, y: 1, z: 1, w: 1}
+  m_MaskMapRemapMin: {x: 0, y: 0, z: 0, w: 0}
+  m_MaskMapRemapMax: {x: 1, y: 1, z: 1, w: 0.052093863}
