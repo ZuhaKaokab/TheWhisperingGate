@@ -17,15 +17,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 81d957e141f48d647b2ad60a2277f1ff, type: 2}
   - {fileID: 11400000, guid: fbf7826fa2d66164695258b7347f5fb7, type: 2}
   - {fileID: 11400000, guid: d1c913845ff141746ab57eccd7b46879, type: 2}
+  - {fileID: 11400000, guid: d9562e0ba6c112449acee82c4544b7ba, type: 2}
+  - {fileID: 11400000, guid: a759400e008bb604888e36dbed2ed4d7, type: 2}
+  - {fileID: 11400000, guid: 408feca885639b0499ae84cff9f5279c, type: 2}
+  - {fileID: 11400000, guid: a2408261a3a64c742b390ae4b07704b3, type: 2}
   coverImage: {fileID: 0}
   pageBackground: {fileID: 21300000, guid: 2dfc2690403f9164793d6f63de522242, type: 3}
   pageBorder: {fileID: 21300000, guid: de4736046fb68e2448eb00f1fb99be74, type: 3}
   pageColor: {r: 0.95, g: 0.93, b: 0.88, a: 1}
   textColor: {r: 0.2, g: 0.15, b: 0.1, a: 1}
   titleColor: {r: 0.4, g: 0.2, b: 0.1, a: 1}
-  openSound: {fileID: 0}
-  closeSound: {fileID: 0}
-  pageFlipSound: {fileID: 0}
-  unlockSound: {fileID: 0}
+  openSound: {fileID: 8300000, guid: 0cc6135902a60c94c8e0f7a4c4145586, type: 3}
+  closeSound: {fileID: 8300000, guid: 0cc6135902a60c94c8e0f7a4c4145586, type: 3}
+  pageFlipSound: {fileID: 8300000, guid: 0cc6135902a60c94c8e0f7a4c4145586, type: 3}
+  unlockSound: {fileID: 8300000, guid: 0cc6135902a60c94c8e0f7a4c4145586, type: 3}
   pageFlipDuration: 0.3
   openCloseDuration: 0.4

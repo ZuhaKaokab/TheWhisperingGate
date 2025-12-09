@@ -13,14 +13,25 @@ MonoBehaviour:
   m_Name: Page_Introduction 1
   m_EditorClassIdentifier: 
   pageId: intro_2
-  pageTitle: Display Title
+  pageTitle: 
   sortOrder: 1
   contentType: 0
-  textContent: The forest holds many secrets...
+  textContent: 'The forest holds many secrets....
+
+
+    Secrets older than the soil
+    itself, older than the names people have given this place. I have walked through
+    many jungles in my life, but none have watched me the way this one does. Every
+    step I take feels observed, as if the trees themselves lean closer to listen
+    to my thoughts.
+
+
+    There is a heaviness here an ancient weight pressing against
+    the air. The light dims too quickly, swallowed by...'
   pageImage: {fileID: 0}
   imagePosition: 0
   imageScale: 0.8
   unlockedByDefault: 1
   unlockCondition: 
   unlockFlag: 
-  firstViewSound: {fileID: 0}
+  firstViewSound: {fileID: 8300000, guid: 0cc6135902a60c94c8e0f7a4c4145586, type: 3}

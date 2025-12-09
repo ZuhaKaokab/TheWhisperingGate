@@ -13,14 +13,20 @@ MonoBehaviour:
   m_Name: Page_Introduction
   m_EditorClassIdentifier: 
   pageId: intro_1
-  pageTitle: Display Title
+  pageTitle: 
   sortOrder: 0
   contentType: 0
-  textContent: The Whispering Gate
+  textContent: "The Whispering Gate\n\nLocal stories claimed this place was once
+    a passage a bridge between two worlds. I dismissed it as superstition until I
+    reached the clearing. There, hanging from a dead, brittle branch, were small
+    figures made of straw and bone. Voodoo dolls. Dozens of them. They swayed gently,
+    though the air was perfectly still.\n\nIf anyone else reads this, remember one
+    thing:\nCuriosity is the first step this place uses to pull you in.\nThe second
+    step\u2026\nis silence."
   pageImage: {fileID: 0}
   imagePosition: 0
   imageScale: 0.8
   unlockedByDefault: 1
   unlockCondition: 
   unlockFlag: 
-  firstViewSound: {fileID: 0}
+  firstViewSound: {fileID: 8300000, guid: 0cc6135902a60c94c8e0f7a4c4145586, type: 3}
