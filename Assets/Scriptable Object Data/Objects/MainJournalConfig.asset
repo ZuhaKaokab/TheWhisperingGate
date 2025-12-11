@@ -15,8 +15,6 @@ MonoBehaviour:
   allPages:
   - {fileID: 11400000, guid: 5061be8d78b1a684aaa59b9215b9792c, type: 2}
   - {fileID: 11400000, guid: 81d957e141f48d647b2ad60a2277f1ff, type: 2}
-  - {fileID: 11400000, guid: fbf7826fa2d66164695258b7347f5fb7, type: 2}
-  - {fileID: 11400000, guid: d1c913845ff141746ab57eccd7b46879, type: 2}
   - {fileID: 11400000, guid: d9562e0ba6c112449acee82c4544b7ba, type: 2}
   - {fileID: 11400000, guid: a759400e008bb604888e36dbed2ed4d7, type: 2}
   - {fileID: 11400000, guid: 408feca885639b0499ae84cff9f5279c, type: 2}

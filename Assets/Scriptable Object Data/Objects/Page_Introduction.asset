@@ -16,13 +16,18 @@ MonoBehaviour:
   pageTitle: 
   sortOrder: 0
   contentType: 0
-  textContent: "The Whispering Gate\n\nLocal stories claimed this place was once
+  textContent: 'The Whispering Gate
+
+
+    Local stories claimed this place was once
     a passage a bridge between two worlds. I dismissed it as superstition until I
     reached the clearing. There, hanging from a dead, brittle branch, were small
     figures made of straw and bone. Voodoo dolls. Dozens of them. They swayed gently,
-    though the air was perfectly still.\n\nIf anyone else reads this, remember one
-    thing:\nCuriosity is the first step this place uses to pull you in.\nThe second
-    step\u2026\nis silence."
+    though the air was perfectly still.
+
+
+    If anyone else reads this, remember
+    one thing:'
   pageImage: {fileID: 0}
   imagePosition: 0
   imageScale: 0.8
