@@ -45,6 +45,12 @@ namespace WhisperingGate.UI
         [Header("Visual Settings")]
         [SerializeField] private Color disabledButtonColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
 
+        // --- Added for Instructions Panel ---
+        [Header("Instructions Panel")]
+        [SerializeField] private GameObject instructionsPanel;
+        [SerializeField] private Button instructionsButton;
+        [SerializeField] private Button instructionsCloseButton;
+
         private System.Action pendingConfirmAction;
 
         private void Start()
@@ -74,18 +80,22 @@ namespace WhisperingGate.UI
             // Main Menu
             if (resumeButton != null)
                 resumeButton.onClick.AddListener(OnResumeClicked);
-            
+
             if (newGameButton != null)
                 newGameButton.onClick.AddListener(OnNewGameClicked);
-            
+
             if (loadGameButton != null)
                 loadGameButton.onClick.AddListener(OnLoadGameClicked);
-            
+
             if (optionsButton != null)
                 optionsButton.onClick.AddListener(OnOptionsClicked);
-            
+
             if (exitButton != null)
                 exitButton.onClick.AddListener(OnExitClicked);
+
+            // Instructions Button
+            if (instructionsButton != null)
+                instructionsButton.onClick.AddListener(OnInstructionsClicked);
 
             // Load Game Panel
             if (loadBackButton != null)
@@ -98,9 +108,13 @@ namespace WhisperingGate.UI
             // Confirmation Dialog
             if (confirmYesButton != null)
                 confirmYesButton.onClick.AddListener(OnConfirmYes);
-            
+
             if (confirmNoButton != null)
                 confirmNoButton.onClick.AddListener(OnConfirmNo);
+
+            // Instructions Panel Close Button
+            if (instructionsCloseButton != null)
+                instructionsCloseButton.onClick.AddListener(OnInstructionsCloseClicked);
         }
 
         private void UpdateResumeButton()
@@ -108,9 +122,9 @@ namespace WhisperingGate.UI
             if (resumeButton == null) return;
 
             bool hasSave = SaveManager.Instance != null && SaveManager.Instance.HasAnySave();
-            
+
             resumeButton.interactable = hasSave;
-            
+
             // Visual feedback for disabled state
             var colors = resumeButton.colors;
             colors.disabledColor = disabledButtonColor;
@@ -125,7 +139,6 @@ namespace WhisperingGate.UI
         }
 
         #region Panel Management
-
         private void ShowMainMenu()
         {
             SetActivePanel(mainMenuPanel);
@@ -149,12 +162,16 @@ namespace WhisperingGate.UI
             if (loadGamePanel != null) loadGamePanel.SetActive(panel == loadGamePanel);
             if (optionsPanel != null) optionsPanel.SetActive(panel == optionsPanel);
             if (confirmDialog != null) confirmDialog.SetActive(false);
-        }
 
+            // Also ensure instructions panel is hidden when switching main panels
+            if (instructionsPanel != null && panel != instructionsPanel)
+            {
+                instructionsPanel.SetActive(false);
+            }
+        }
         #endregion
 
         #region Button Handlers
-
         private void OnResumeClicked()
         {
             if (SaveManager.Instance == null)
@@ -165,7 +182,7 @@ namespace WhisperingGate.UI
 
             int mostRecent = SaveManager.Instance.GetMostRecentSaveSlot();
             Debug.Log($"[MainMenu] Resume clicked - Most recent slot: {mostRecent}");
-            
+
             if (mostRecent >= 0)
             {
                 LoadGame(mostRecent);
@@ -205,15 +222,13 @@ namespace WhisperingGate.UI
         {
             ShowConfirmation("Are you sure you want to exit?", ExitGame);
         }
-
         #endregion
 
         #region Game Actions
-
         private void StartNewGame()
         {
             Debug.Log("[MainMenu] Starting new game...");
-            
+
             // Clear any existing game state
             if (Core.GameState.Instance != null)
             {
@@ -227,7 +242,7 @@ namespace WhisperingGate.UI
         private void LoadGame(int slot)
         {
             Debug.Log($"[MainMenu] Loading game from slot {slot}...");
-            
+
             if (SaveManager.Instance != null)
             {
                 SaveManager.Instance.Load(slot);
@@ -237,18 +252,16 @@ namespace WhisperingGate.UI
         private void ExitGame()
         {
             Debug.Log("[MainMenu] Exiting game...");
-            
-            #if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-            #else
-            Application.Quit();
-            #endif
-        }
 
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
         #endregion
 
         #region Save Slots
-
         private void RefreshSaveSlots()
         {
             if (saveSlotContainer == null || SaveManager.Instance == null) return;
@@ -270,7 +283,7 @@ namespace WhisperingGate.UI
         private void CreateSaveSlotUI(int slotIndex, SaveSlotInfo info)
         {
             GameObject slotObj;
-            
+
             if (saveSlotPrefab != null)
             {
                 slotObj = Instantiate(saveSlotPrefab, saveSlotContainer);
@@ -292,7 +305,7 @@ namespace WhisperingGate.UI
         {
             // Create a simple default slot
             GameObject slot = new GameObject("SaveSlot");
-            
+
             var rect = slot.AddComponent<RectTransform>();
             rect.sizeDelta = new Vector2(400, 80);
 
@@ -328,27 +341,26 @@ namespace WhisperingGate.UI
         {
             var info = SaveManager.Instance.GetSlotInfo(slotIndex);
             string saveName = info.isEmpty ? $"Slot {slotIndex + 1}" : info.saveName;
-            
+
             ShowConfirmation(
                 $"Delete save \"{saveName}\"?\nThis cannot be undone.",
-                () => {
+                () =>
+                {
                     SaveManager.Instance.DeleteSave(slotIndex);
                     RefreshSaveSlots();
                     UpdateResumeButton();
                 }
             );
         }
-
         #endregion
 
         #region Confirmation Dialog
-
         private void ShowConfirmation(string message, System.Action onConfirm)
         {
             if (confirmDialog == null) return;
 
             pendingConfirmAction = onConfirm;
-            
+
             if (confirmText != null)
                 confirmText.text = message;
 
@@ -367,11 +379,27 @@ namespace WhisperingGate.UI
             confirmDialog?.SetActive(false);
             pendingConfirmAction = null;
         }
+        #endregion
 
+        #region Instructions Panel Handlers
+        private void OnInstructionsClicked()
+        {
+            if (instructionsPanel != null)
+            {
+                instructionsPanel.SetActive(true);
+            }
+        }
+
+        private void OnInstructionsCloseClicked()
+        {
+            if (instructionsPanel != null)
+            {
+                instructionsPanel.SetActive(false);
+            }
+        }
         #endregion
 
         #region Keyboard Navigation
-
         private void Update()
         {
             // ESC to go back
@@ -389,10 +417,13 @@ namespace WhisperingGate.UI
                 {
                     ShowMainMenu();
                 }
+                else if (instructionsPanel != null && instructionsPanel.activeSelf)
+                {
+                    // If instructions panel is open, close it on ESC
+                    OnInstructionsCloseClicked();
+                }
             }
         }
-
         #endregion
     }
 }
-
