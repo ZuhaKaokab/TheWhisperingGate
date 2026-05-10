@@ -17,8 +17,8 @@ MonoBehaviour:
   lineText: Before me stood a massive, twisted tree. Its branches reached like skeletal
     fingers, and from them hung dozens of straw dolls. Each one wore tiny, hand-sewn
     clothes. I could see my name stitched into one of them.
-  voiceClip: {fileID: 0}
-  voiceDelay: 0
+  voiceClip: {fileID: 8300000, guid: e59bbe3df21a18c46af6042341646fb3, type: 3}
+  voiceDelay: 1
   choices:
   - choiceText: Examine the doll with my name
     nextNode: {fileID: 11400000, guid: 77b1f0bc50cb5554eaa9ea4a0044427b, type: 2}

@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I took several steps back. My heart pounded. Whatever this place was,
     I didn't want to know more. But as I retreated, I heard it, a scream. Alina's
     voice, calling my name.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: f95bac6c4bd91b3498d9c58764d900bd, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 080e3095438d7a64bbba84313931d3f7, type: 2}

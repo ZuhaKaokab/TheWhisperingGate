@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I placed my hand on the gnarled bark. The moment I touched it, images
     flooded my mind, Alina screaming, a ritual circle, a gate that shouldn't exist.
     The tree was showing me something. Showing me the way.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 7b127e05fdde28549b1ef65123af9e08, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 080e3095438d7a64bbba84313931d3f7, type: 2}

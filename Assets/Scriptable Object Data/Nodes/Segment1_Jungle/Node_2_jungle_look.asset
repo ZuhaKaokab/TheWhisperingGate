@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I scanned my surroundings. Twisted trees with gnarled branches. Straw
     dolls hanging from the limbs, their tiny clothes recently stitched. Something
     felt deeply wrong here.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: a18e55631d6af8f44b89b7013eb5c5ed, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: fd0eb5ae0241625428716c80de15b9ed, type: 2}

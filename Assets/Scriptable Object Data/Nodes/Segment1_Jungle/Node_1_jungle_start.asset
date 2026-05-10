@@ -16,7 +16,7 @@ MonoBehaviour:
   speaker: {fileID: 11400000, guid: 4a8c3185d13e75741aa7ad02124c743e, type: 2}
   lineText: I opened my eyes. The sky above me was bleeding red, and rain fell upward
     into the void. Where... where am I?
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: d48831810b46c8c43829d0c7193bea86, type: 3}
   voiceDelay: 0
   choices:
   - choiceText: Look around carefully

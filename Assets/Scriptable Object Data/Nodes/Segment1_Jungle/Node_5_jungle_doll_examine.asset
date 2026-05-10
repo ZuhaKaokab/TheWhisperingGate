@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I reached up and carefully took down the doll. It was unnervingly detailed.
     The clothes were real fabric, recently made. Stitched into its chest was my full
     name, and below it... a date. Today's date.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: a7898400e32a03f41b8a33b36b45655e, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 080e3095438d7a64bbba84313931d3f7, type: 2}
