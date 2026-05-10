@@ -14,7 +14,7 @@ public class VideoHideExample : MonoBehaviour
 
     void OnVideoEnd(VideoPlayer vp)
     {
-        // Video khatam hone pe screen hide kar do
+       //Video khatam hone pe screen hide kar do
         videoScreen.SetActive(false);
     }
 }
