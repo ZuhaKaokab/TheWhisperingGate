@@ -17,12 +17,12 @@ MonoBehaviour:
   lineText: I forced myself to stop. To think. The scream sounded real, but in this
     place, nothing was what it seemed. I watched the path, listening for any other
     sounds. After a moment, I saw movement, a figure in the shadows.
-  voiceClip: {fileID: 0}
-  voiceDelay: 0
+  voiceClip: {fileID: 8300000, guid: c299af57382d55d4e980e1b72e9ef180, type: 3}
+  voiceDelay: 5
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 4a31c11ac5810624bb81a145696aa189, type: 2}
   startCommands:
   - flag:waited_observed
   endCommands: []
   isEndNode: 1
-  displayDuration: 0
+  displayDuration: 18

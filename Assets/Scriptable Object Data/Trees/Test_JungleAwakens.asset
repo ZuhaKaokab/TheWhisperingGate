@@ -15,5 +15,5 @@ MonoBehaviour:
   treeId: jungle
   treeTitle: Jungle Awakens
   startNode: {fileID: 11400000, guid: 332af640bf4e2f84c9c626b0411a8ff9, type: 2}
-  defaultTypewriterSpeed: 0.05
-  autoAdvanceIfSingleChoice: 0
+  defaultTypewriterSpeed: 0.08
+  autoAdvanceIfSingleChoice: 1

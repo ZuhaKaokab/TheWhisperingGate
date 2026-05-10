@@ -18,7 +18,7 @@ MonoBehaviour:
     Gate, a portal between worlds. Your sister is trapped on the other side. You
     must enter, complete the ritual, and bring her back. But be warned: the gate
     will test your mind, your courage, and your sanity.'
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: b08ef8d1695e1a84a88ce2f702f5da59, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 9f7d4a07dce035845ba3cc66f226704f, type: 2}
@@ -27,5 +27,5 @@ MonoBehaviour:
   - flag:met_writer
   - ending:trust_path
   endCommands: []
-  isEndNode: 1
+  isEndNode: 0
   displayDuration: 0

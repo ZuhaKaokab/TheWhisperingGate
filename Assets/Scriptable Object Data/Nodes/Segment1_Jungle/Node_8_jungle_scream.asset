@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: Help me!" The voice was unmistakable. Alina. She was here, somewhere
     in this nightmare. The scream came from deeper in the jungle, toward a path I
     hadn't noticed before.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 07894b1caa19bce4abe65db461974090, type: 3}
   voiceDelay: 0
   choices:
   - choiceText: Run toward the scream

@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I understand your caution. But time is running out. Every moment you
     delay, the curse grows stronger. I'll give you the journal anyway, read it, then
     decide. But don't wait too long.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 89765b1c48722dc4886aa40a6e584dca, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 9f7d4a07dce035845ba3cc66f226704f, type: 2}
@@ -25,5 +25,5 @@ MonoBehaviour:
   - item:ritual_journal
   - flag:met_writer
   endCommands: []
-  isEndNode: 1
+  isEndNode: 0
   displayDuration: 0

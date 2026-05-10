@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: No. This had to be a trap. Alina couldn't be here. This whole place was
     designed to lure me in, to make me desperate. I stayed where I was, my mind racing
     with paranoia.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 043f08ff5ab099c468643a91a52e6f8f, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 4a31c11ac5810624bb81a145696aa189, type: 2}
@@ -26,4 +26,4 @@ MonoBehaviour:
   - var:sanity-10
   endCommands: []
   isEndNode: 1
-  displayDuration: 0
+  displayDuration: 15

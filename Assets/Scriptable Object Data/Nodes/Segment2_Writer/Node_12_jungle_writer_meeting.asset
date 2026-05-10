@@ -14,11 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nodeId: jungle_writer_meeting
   speaker: {fileID: 11400000, guid: 03e62688353346140b10a70dc0b16566, type: 2}
-  lineText: You're here. Good." A figure emerged from the shadows, a man with tired
-    eyes, holding a journal. "I've been waiting. The curse is real, and your sister
+  lineText: You're here. Good. I've been waiting. The curse is real, and your sister
     doesn't have much time. I can help you, but you need to trust me.
-  voiceClip: {fileID: 0}
-  voiceDelay: 0
+  voiceClip: {fileID: 8300000, guid: bd13dd0376e444f40b869cf219eb2660, type: 3}
+  voiceDelay: 2
   choices:
   - choiceText: I trust you. Tell me everything.
     nextNode: {fileID: 11400000, guid: 42f70ead9900add4ca6ed02a8a6251ad, type: 2}
@@ -64,5 +63,5 @@ MonoBehaviour:
   - sky:night:5
   - cam:meet_writer
   endCommands: []
-  isEndNode: 0
+  isEndNode: 1
   displayDuration: 0

@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I didn't hesitate. I ran toward her voice, pushing through twisted branches
     and unnatural undergrowth. The path led deeper into the jungle, toward something
     I couldn't yet see.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: f17fa97a886f6c94cac2ea91b79cac4b, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 4a31c11ac5810624bb81a145696aa189, type: 2}
@@ -25,4 +25,4 @@ MonoBehaviour:
   - flag:followed_scream
   endCommands: []
   isEndNode: 1
-  displayDuration: 0
+  displayDuration: 15

@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: Smart. Here, this journal contains everything I've learned. See for yourself.
     The ritual, the gate, the consequences. Once you've read it, you'll understand
     why I'm here, and why you must act quickly.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: 4f58acaaedbf86d42b2c1c89f1b182ec, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 11400000, guid: 9f7d4a07dce035845ba3cc66f226704f, type: 2}
@@ -27,5 +27,5 @@ MonoBehaviour:
   - flag:met_writer
   - var:investigation_level+10
   endCommands: []
-  isEndNode: 1
+  isEndNode: 0
   displayDuration: 0

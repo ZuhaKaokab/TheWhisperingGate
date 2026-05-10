@@ -17,7 +17,7 @@ MonoBehaviour:
   lineText: I took the journal. The weight of it felt heavy in my hands, not just
     physical weight, but the weight of what I now knew. Alina was counting on me.
     The gate awaited. This was only the beginning.
-  voiceClip: {fileID: 0}
+  voiceClip: {fileID: 8300000, guid: cb8ce31b6b34acc4784af73e094fcc17, type: 3}
   voiceDelay: 0
   choices: []
   nextNodeIfAuto: {fileID: 0}
@@ -25,4 +25,4 @@ MonoBehaviour:
   - flag:prologue_complete
   endCommands: []
   isEndNode: 1
-  displayDuration: 12
+  displayDuration: 17
