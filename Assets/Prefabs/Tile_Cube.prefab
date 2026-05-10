@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 2697638952733328471}
   - component: {fileID: 2072690727955997387}
   - component: {fileID: 1380246514180800299}
+  - component: {fileID: -5760599745870277712}
   m_Layer: 0
   m_Name: Tile_Cube
   m_TagString: Untagged
@@ -121,8 +122,30 @@ MonoBehaviour:
   coordinates: {x: 0, y: 0}
   isPressed: 0
   isLocked: 0
-  tileVisual: {fileID: 0}
-  tileRenderer: {fileID: 0}
+  tileVisual: {fileID: 8678488142451759773}
+  tileRenderer: {fileID: 2697638952733328471}
+  triggerCollider: {fileID: 2072690727955997387}
   defaultMaterial: {fileID: 0}
   pressedMaterial: {fileID: 0}
   wrongMaterial: {fileID: 0}
+--- !u!65 &-5760599745870277712
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2725765286718132060}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
