@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using WhisperingGate.Core;
 
 namespace WhisperingGate.Interaction
@@ -7,6 +8,7 @@ namespace WhisperingGate.Interaction
     /// <summary>
     /// A door that can be opened/closed via commands, puzzles, or direct calls.
     /// Supports animation, rotation, or sliding open methods.
+    /// Added: Delayed auto-hide functionality after opening.
     /// </summary>
     public class Door : MonoBehaviour
     {
@@ -16,7 +18,7 @@ namespace WhisperingGate.Interaction
 
         [Header("Open Method")]
         [SerializeField] private DoorOpenMethod openMethod = DoorOpenMethod.Rotate;
-        
+
         [Header("Rotation Settings (if Rotate)")]
         [SerializeField] private float openAngle = 90f;
         [SerializeField] private Vector3 rotationAxis = Vector3.up;
@@ -41,6 +43,10 @@ namespace WhisperingGate.Interaction
         [SerializeField] private bool canClose = true;
         [SerializeField] private bool isLocked = false;
 
+        [Header("Hide Settings")]
+        [SerializeField] private bool hideAfterOpen = true;
+        [SerializeField] private float hideDelay = 2.5f; // Kitni der baad hide hoga
+
         [Header("Audio")]
         [SerializeField] private AudioSource audioSource;
         [SerializeField] private AudioClip openSound;
@@ -50,7 +56,7 @@ namespace WhisperingGate.Interaction
         [Header("Events")]
         [Tooltip("GameState flag to set when opened")]
         [SerializeField] private string onOpenFlag = "";
-        
+
         [Tooltip("Commands to execute when opened")]
         [SerializeField] private string[] onOpenCommands;
 
@@ -65,9 +71,7 @@ namespace WhisperingGate.Interaction
         private Vector3 openPosition;
         private Quaternion openRotation;
 
-        // Static registry for command access
-        private static System.Collections.Generic.Dictionary<string, Door> doorRegistry = 
-            new System.Collections.Generic.Dictionary<string, Door>();
+        private static Dictionary<string, Door> doorRegistry = new Dictionary<string, Door>();
 
         public string DoorId => doorId;
         public bool IsOpen => isOpen;
@@ -76,18 +80,15 @@ namespace WhisperingGate.Interaction
 
         private void Awake()
         {
-            // Register this door
             if (!string.IsNullOrWhiteSpace(doorId))
             {
                 doorRegistry[doorId] = this;
             }
 
-            // Store initial state
             Transform target = pivotPoint != null ? pivotPoint : transform;
             closedPosition = target.localPosition;
             closedRotation = target.localRotation;
 
-            // Calculate open state
             switch (openMethod)
             {
                 case DoorOpenMethod.Rotate:
@@ -104,11 +105,11 @@ namespace WhisperingGate.Interaction
                     break;
             }
 
-            // Set initial state
             if (startsOpen)
             {
                 isOpen = true;
                 ApplyState(true, immediate: true);
+                if (hideAfterOpen) SetVisibility(false);
             }
         }
 
@@ -120,9 +121,6 @@ namespace WhisperingGate.Interaction
             }
         }
 
-        /// <summary>
-        /// Get a door by its ID.
-        /// </summary>
         public static Door GetDoor(string id)
         {
             if (doorRegistry.TryGetValue(id, out Door door))
@@ -130,9 +128,6 @@ namespace WhisperingGate.Interaction
             return null;
         }
 
-        /// <summary>
-        /// Open the door.
-        /// </summary>
         public void Open()
         {
             if (isOpen || isAnimating) return;
@@ -140,43 +135,31 @@ namespace WhisperingGate.Interaction
             if (isLocked)
             {
                 PlaySound(lockedSound);
-                if (enableDebugLogs) Debug.Log($"[Door] '{doorId}' is locked");
                 return;
             }
 
-            if (enableDebugLogs) Debug.Log($"[Door] Opening '{doorId}'");
             StartCoroutine(AnimateDoor(true));
         }
 
-        /// <summary>
-        /// Close the door.
-        /// </summary>
         public void Close()
         {
             if (!isOpen || isAnimating || !canClose) return;
 
-            if (enableDebugLogs) Debug.Log($"[Door] Closing '{doorId}'");
+            // If it was hidden, show it again before closing
+            if (hideAfterOpen) SetVisibility(true);
+
             StartCoroutine(AnimateDoor(false));
         }
 
-        /// <summary>
-        /// Toggle door state.
-        /// </summary>
         public void Toggle()
         {
-            if (isOpen)
-                Close();
-            else
-                Open();
+            if (isOpen) Close();
+            else Open();
         }
 
-        /// <summary>
-        /// Lock/unlock the door.
-        /// </summary>
         public void SetLocked(bool locked)
         {
             isLocked = locked;
-            if (enableDebugLogs) Debug.Log($"[Door] '{doorId}' locked: {locked}");
         }
 
         private IEnumerator AnimateDoor(bool opening)
@@ -186,10 +169,8 @@ namespace WhisperingGate.Interaction
             if (openDelay > 0)
                 yield return new WaitForSeconds(openDelay);
 
-            // Play sound
             PlaySound(opening ? openSound : closeSound);
 
-            // Handle animation method
             if (openMethod == DoorOpenMethod.Animate && animator != null)
             {
                 animator.SetTrigger(opening ? openTrigger : closeTrigger);
@@ -197,7 +178,6 @@ namespace WhisperingGate.Interaction
             }
             else
             {
-                // Lerp position/rotation
                 Transform target = pivotPoint != null ? pivotPoint : transform;
                 Vector3 startPos = target.localPosition;
                 Quaternion startRot = target.localRotation;
@@ -209,10 +189,10 @@ namespace WhisperingGate.Interaction
                 {
                     elapsed += Time.deltaTime;
                     float t = openCurve.Evaluate(elapsed / openDuration);
-                    
+
                     target.localPosition = Vector3.Lerp(startPos, endPos, t);
                     target.localRotation = Quaternion.Slerp(startRot, endRot, t);
-                    
+
                     yield return null;
                 }
 
@@ -223,18 +203,39 @@ namespace WhisperingGate.Interaction
             isOpen = opening;
             isAnimating = false;
 
-            // Set flag and execute commands on open
             if (opening)
             {
+                // Set flags and execute commands immediately
                 if (!string.IsNullOrWhiteSpace(onOpenFlag) && GameState.Instance != null)
                 {
                     GameState.Instance.SetBool(onOpenFlag, true);
                 }
 
                 ExecuteCommands(onOpenCommands);
+
+                // --- NEW: Delayed Hiding Logic ---
+                if (hideAfterOpen)
+                {
+                    if (enableDebugLogs) Debug.Log($"[Door] '{doorId}' opened. Waiting {hideDelay}s to hide.");
+
+                    yield return new WaitForSeconds(hideDelay);
+
+                    SetVisibility(false);
+                    if (enableDebugLogs) Debug.Log($"[Door] '{doorId}' is now hidden.");
+                }
             }
 
             if (enableDebugLogs) Debug.Log($"[Door] '{doorId}' is now {(isOpen ? "open" : "closed")}");
+        }
+
+        private void SetVisibility(bool visible)
+        {
+            // Door ke saare child objects ke Renderers aur Colliders ko handle karein
+            Renderer[] renderers = GetComponentsInChildren<Renderer>();
+            foreach (var r in renderers) r.enabled = visible;
+
+            Collider[] colliders = GetComponentsInChildren<Collider>();
+            foreach (var c in colliders) c.enabled = visible;
         }
 
         private void ApplyState(bool open, bool immediate)
@@ -247,64 +248,32 @@ namespace WhisperingGate.Interaction
         private void PlaySound(AudioClip clip)
         {
             if (clip == null) return;
-
-            if (audioSource != null)
-            {
-                audioSource.PlayOneShot(clip);
-            }
-            else
-            {
-                AudioSource.PlayClipAtPoint(clip, transform.position);
-            }
+            if (audioSource != null) audioSource.PlayOneShot(clip);
+            else AudioSource.PlayClipAtPoint(clip, transform.position);
         }
 
         private void ExecuteCommands(string[] commands)
         {
             if (commands == null) return;
-
             foreach (string cmd in commands)
             {
                 if (string.IsNullOrWhiteSpace(cmd)) continue;
-                // Commands would be executed via a command system
-                // For now, just log them
                 if (enableDebugLogs) Debug.Log($"[Door] Execute command: {cmd}");
             }
         }
 
-        /// <summary>
-        /// Execute a door command from the command system.
-        /// Format: door:action:door_id
-        /// Actions: open, close, toggle, lock, unlock
-        /// </summary>
         public static void ExecuteCommand(string action, string targetId)
         {
             Door door = GetDoor(targetId);
-            if (door == null)
-            {
-                Debug.LogWarning($"[Door] Door not found: {targetId}");
-                return;
-            }
+            if (door == null) return;
 
             switch (action.ToLower())
             {
-                case "open":
-                    door.Open();
-                    break;
-                case "close":
-                    door.Close();
-                    break;
-                case "toggle":
-                    door.Toggle();
-                    break;
-                case "lock":
-                    door.SetLocked(true);
-                    break;
-                case "unlock":
-                    door.SetLocked(false);
-                    break;
-                default:
-                    Debug.LogWarning($"[Door] Unknown action: {action}");
-                    break;
+                case "open": door.Open(); break;
+                case "close": door.Close(); break;
+                case "toggle": door.Toggle(); break;
+                case "lock": door.SetLocked(true); break;
+                case "unlock": door.SetLocked(false); break;
             }
         }
 
@@ -312,12 +281,9 @@ namespace WhisperingGate.Interaction
         private void OnDrawGizmosSelected()
         {
             Transform target = pivotPoint != null ? pivotPoint : transform;
-            
-            // Draw closed position
             Gizmos.color = Color.red;
             Gizmos.DrawWireCube(target.position, Vector3.one * 0.2f);
             
-            // Draw open position preview
             Gizmos.color = Color.green;
             if (openMethod == DoorOpenMethod.Slide)
             {
@@ -327,18 +293,11 @@ namespace WhisperingGate.Interaction
             }
             else if (openMethod == DoorOpenMethod.Rotate)
             {
-                // Draw rotation arc
                 Gizmos.DrawRay(target.position, target.TransformDirection(rotationAxis) * 0.5f);
             }
         }
 #endif
     }
 
-    public enum DoorOpenMethod
-    {
-        Rotate,     // Rotates around pivot (standard door)
-        Slide,      // Slides in a direction (sliding door, gate)
-        Animate     // Uses Animator component
-    }
+    public enum DoorOpenMethod { Rotate, Slide, Animate }
 }
-
