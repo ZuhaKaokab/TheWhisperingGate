@@ -1,13 +1,10 @@
 using UnityEngine;
 using WhisperingGate.Dialogue;
 using CameraFocus = WhisperingGate.Camera;
+using System.Collections.Generic; // Added for List/Collections
 
 namespace WhisperingGate.Gameplay
 {
-    /// <summary>
-    /// Simple hybrid controller that supports both first- and third-person views with smooth camera follow.
-    /// Uses a CharacterController for movement and allows runtime toggling between view modes.
-    /// </summary>
     [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
     {
@@ -22,6 +19,16 @@ namespace WhisperingGate.Gameplay
         [SerializeField] private float jumpHeight = 1.2f;
         [SerializeField] private float gravity = -25f;
         [SerializeField] private float rotationSmoothTime = 0.15f;
+
+        // --- FOOTSTEPS SECTION START ---
+        [Header("Footsteps")]
+        [SerializeField] private AudioSource footstepAudioSource;
+        [SerializeField] private AudioClip[] footstepClips;
+        [SerializeField] private float footstepIntervalWalk = 0.5f;
+        [SerializeField] private float footstepIntervalSprint = 0.3f;
+        [SerializeField] private float footstepIntervalCrouch = 0.7f;
+        private float footstepTimer;
+        // --- FOOTSTEPS SECTION END ---
 
         [Header("Camera")]
         [SerializeField] private UnityEngine.Camera playerCamera;
@@ -41,10 +48,7 @@ namespace WhisperingGate.Gameplay
         private CharacterController controller;
         private ViewMode currentViewMode = ViewMode.FirstPerson;
         private bool inputEnabled = true;
-        
-        /// <summary>
-        /// Current camera view mode (First Person or Third Person).
-        /// </summary>
+
         public ViewMode CurrentViewMode => currentViewMode;
 
         private float pitch;
@@ -55,28 +59,15 @@ namespace WhisperingGate.Gameplay
 
         [SerializeField] private float groundedGraceTime = 0.15f;
 
-        // Jump animation event support
         private bool jumpRequested = false;
         private bool isJumping = false;
 
-        // Crouch state
         private bool isCrouched = false;
         private float currentHeight;
         private float targetHeight;
 
-        /// <summary>
-        /// Exposes vertical movement speed for animation systems.
-        /// </summary>
         public float VerticalSpeed => verticalSpeed;
-
-        /// <summary>
-        /// Exposes crouch state for animation systems.
-        /// </summary>
         public bool IsCrouched => isCrouched;
-
-        /// <summary>
-        /// Exposes jump request state for animation systems.
-        /// </summary>
         public bool JumpRequested => jumpRequested;
 
         private void Awake()
@@ -93,9 +84,8 @@ namespace WhisperingGate.Gameplay
                 playerCamera = UnityEngine.Camera.main;
 
             if (playerCamera != null)
-                playerCamera.transform.SetParent(null); // keep camera free for smooth follow
+                playerCamera.transform.SetParent(null);
 
-            // Initialize heights
             normalHeight = controller.height;
             currentHeight = normalHeight;
             targetHeight = normalHeight;
@@ -136,11 +126,11 @@ namespace WhisperingGate.Gameplay
             HandleMovement();
             UpdateCrouchHeight();
             UpdateCamera();
+            HandleFootsteps(); // Footsteps update call
         }
 
         private void HandleMovement()
         {
-            // Track jump state - clear when grounded
             if (controller.isGrounded && isJumping)
             {
                 isJumping = false;
@@ -148,19 +138,17 @@ namespace WhisperingGate.Gameplay
 
             float horizontal = Input.GetAxisRaw("Horizontal");
             float vertical = Input.GetAxisRaw("Vertical");
-            
-            // Disable horizontal movement during jump
+
             Vector3 moveDirection;
             if (isJumping)
             {
-                moveDirection = Vector3.zero; // No horizontal movement during jump
+                moveDirection = Vector3.zero;
             }
             else
             {
                 moveDirection = (transform.right * horizontal + transform.forward * vertical).normalized;
             }
 
-            // Determine speed based on crouch and sprint
             float targetSpeed = isCrouched ? crouchSpeed : (Input.GetKey(KeyCode.LeftShift) ? sprintSpeed : walkSpeed);
             Vector3 motion = moveDirection * targetSpeed;
 
@@ -169,7 +157,7 @@ namespace WhisperingGate.Gameplay
                 groundedTimer = groundedGraceTime;
                 if (verticalSpeed < 0f)
                 {
-                    verticalSpeed = -2f; // small stick-to-ground
+                    verticalSpeed = -2f;
                 }
             }
             else
@@ -177,11 +165,10 @@ namespace WhisperingGate.Gameplay
                 groundedTimer -= Time.deltaTime;
             }
 
-            // Request jump on button press (actual jump will be triggered by animation event)
             if (groundedTimer > 0f && Input.GetButtonDown("Jump") && !isCrouched && !isJumping)
             {
                 jumpRequested = true;
-                isJumping = true; // Set jumping state immediately
+                isJumping = true;
                 groundedTimer = 0f;
             }
 
@@ -189,6 +176,40 @@ namespace WhisperingGate.Gameplay
             motion.y = verticalSpeed;
 
             controller.Move(motion * Time.deltaTime);
+        }
+
+        // --- FOOTSTEPS LOGIC ---
+        private void HandleFootsteps()
+        {
+            // Sirf tab awaz aaye jab player zameen par ho aur move kar raha ho
+            if (controller.isGrounded && controller.velocity.magnitude > 0.1f)
+            {
+                footstepTimer -= Time.deltaTime;
+
+                if (footstepTimer <= 0)
+                {
+                    // Random clip select karein taake repetition na lage
+                    if (footstepClips.Length > 0 && footstepAudioSource != null)
+                    {
+                        int n = Random.Range(0, footstepClips.Length);
+                        footstepAudioSource.clip = footstepClips[n];
+                        footstepAudioSource.PlayOneShot(footstepAudioSource.clip);
+
+                        // Interval set karein based on speed
+                        float currentInterval = walkSpeed;
+                        if (isCrouched) currentInterval = footstepIntervalCrouch;
+                        else if (Input.GetKey(KeyCode.LeftShift)) currentInterval = footstepIntervalSprint;
+                        else currentInterval = footstepIntervalWalk;
+
+                        footstepTimer = currentInterval;
+                    }
+                }
+            }
+            else
+            {
+                // Agar ruk jaye toh timer reset kardein taake agli baar foran awaz aaye
+                footstepTimer = 0;
+            }
         }
 
         private void HandleLook()
@@ -207,8 +228,7 @@ namespace WhisperingGate.Gameplay
             if (playerCamera == null)
                 return;
 
-            // Skip camera updates if CameraFocusController is handling the camera (focusing or returning)
-            if (CameraFocus.CameraFocusController.Instance != null && 
+            if (CameraFocus.CameraFocusController.Instance != null &&
                 (CameraFocus.CameraFocusController.Instance.IsFocusing || CameraFocus.CameraFocusController.Instance.IsReturning))
                 return;
 
@@ -233,14 +253,12 @@ namespace WhisperingGate.Gameplay
 
         private void HandleCrouch()
         {
-            // Toggle crouch with Left Ctrl
             if (Input.GetKeyDown(crouchKey))
             {
                 isCrouched = !isCrouched;
                 targetHeight = isCrouched ? crouchHeight : normalHeight;
             }
-            
-            // Exit crouch when pressing Shift (while crouched)
+
             if (isCrouched && Input.GetKey(KeyCode.LeftShift))
             {
                 isCrouched = false;
@@ -281,10 +299,6 @@ namespace WhisperingGate.Gameplay
             SetInputEnabled(true);
         }
 
-        /// <summary>
-        /// Called from animation event at the specific frame when jump should occur.
-        /// This allows precise control over when the jump force is applied.
-        /// </summary>
         public void OnJumpAnimationEvent()
         {
             if (jumpRequested && controller.isGrounded)
@@ -295,4 +309,3 @@ namespace WhisperingGate.Gameplay
         }
     }
 }
-
