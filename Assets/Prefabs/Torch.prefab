@@ -212,19 +212,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 2635005523445884774}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 89ce2bb44f441904da0ec973e63e112e, type: 3}
+  m_Script: {fileID: 11500000, guid: 101bbf1663cef864a8fd0a82e1bb3275, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   requireInteraction: 1
   interactKey: 101
   interactDistance: 2
-  torchItemId: torch
+  flashlightItemId: flashlight
   addToInventory: 1
-  startsLit: 1
+  startsOn: 0
   interactionPrompt: {fileID: 0}
   highlightEffect: {fileID: 0}
-  torchLight: {fileID: 3007956713853017242}
-  torchFlame: {fileID: 0}
+  flashlightLight: {fileID: 0}
   pickupSound: {fileID: 0}
   destroyOnPickup: 1
   enableDebugLogs: 1
